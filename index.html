@@ -1,0 +1,1440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Call Requests</title>
+<style>
+/* Layout: one working column — who you are, a year calendar to mark dates, your options, submit; an admin tab for the scheduler */
+:root {
+  --bg: #edf1f0; --surface: #fbfcfc; --surface-2: #f2f5f4; --fg: #142221; --muted: #566664; --line: #d2dbd9;
+  --accent: #0d6466; --accent-fg: #ffffff; --accent-soft: #d8ebe9;
+  --away: #b3261e; --away-bg: #f8e1df; --pref: #8a5700; --pref-bg: #f8ecd2; --want: #256b35; --want-bg: #dff1e3; --leave: #4b3fa8; --leave-bg: #e6e3f7; --overlay: #c2410c;
+  --display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --body: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1615; --surface: #142020; --surface-2: #192827; --fg: #e2ebe9; --muted: #9bafac; --line: #2a3b39;
+    --accent: #5fc2c1; --accent-fg: #06201f; --accent-soft: #163a3a;
+    --away: #ff8f86; --away-bg: #3a1a18; --pref: #f0bf63; --pref-bg: #352812; --want: #7fd093; --want-bg: #15301c; --leave: #b3a9ff; --leave-bg: #24203f; --overlay: #fb923c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1615; --surface: #142020; --surface-2: #192827; --fg: #e2ebe9; --muted: #9bafac; --line: #2a3b39;
+  --accent: #5fc2c1; --accent-fg: #06201f; --accent-soft: #163a3a;
+  --away: #ff8f86; --away-bg: #3a1a18; --pref: #f0bf63; --pref-bg: #352812; --want: #7fd093; --want-bg: #15301c; --leave: #b3a9ff; --leave-bg: #24203f; --overlay: #fb923c;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.45; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--display); font-stretch: 85%; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); font-weight: 800; }
+h2 { font-size: 1.2rem; font-weight: 700; }
+h3 { font-size: 1rem; font-weight: 700; }
+.eyebrow { font-family: var(--display); font-stretch: 80%; text-transform: uppercase; letter-spacing: .09em; font-size: .78rem; font-weight: 700; color: var(--accent); }
+.muted { color: var(--muted); }
+.sublog { margin: 0; padding-left: 1.1em; font-size: .9rem; display: grid; gap: 4px; }
+.pending { color: var(--pref); font-weight: 600; }
+header.top { background: var(--surface); border-bottom: 1px solid var(--line); }
+header.top .wrap { padding-block: 20px 0; display: grid; gap: 6px; }
+.tabs { display: flex; gap: 4px; margin-top: 10px; overflow-x: auto; scrollbar-width: none; }
+.tab { font: inherit; font-weight: 600; white-space: nowrap; flex: none; padding: 8px 14px; border: 1px solid transparent; border-bottom: none; border-radius: 8px 8px 0 0; background: transparent; color: var(--muted); cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--bg); color: var(--fg); border-color: var(--line); }
+main.wrap { padding-block: 20px 60px; display: grid; gap: 20px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 12px; min-width: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.in, select.in { font: inherit; color: var(--fg); background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; min-height: 36px; }
+.btn { font: inherit; font-weight: 600; border-radius: 7px; padding: 7px 14px; min-height: 36px; cursor: pointer; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-fg); }
+.btn.quiet { background: var(--surface); color: var(--fg); border-color: var(--line); }
+.btn:focus-visible, .in:focus-visible, .dc:focus-visible, .wk:focus-visible, .mode:focus-visible, .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.modes { display: flex; flex-wrap: wrap; gap: 6px; }
+.mode { font: inherit; font-weight: 600; font-size: .92rem; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.mode .sw { width: 12px; height: 12px; border-radius: 3px; }
+.mode[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); }
+.sw.away { background: var(--away-bg); border: 1px solid var(--away); }
+.sw.pref { background: var(--pref-bg); border: 1px solid var(--pref); }
+.sw.want { background: var(--want-bg); border: 1px solid var(--want); }
+.sw.leave { background: var(--leave-bg); border: 1px solid var(--leave); }
+.months { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 14px 20px; }
+.month h3 { margin-bottom: 4px; }
+.mgrid { display: grid; grid-template-columns: 34px repeat(7, minmax(0, 1fr)); gap: 3px; }
+.mgrid .hd { font-family: var(--display); font-stretch: 80%; font-weight: 700; font-size: .72rem; color: var(--muted); text-align: center; text-transform: uppercase; }
+.wk { font: inherit; font-size: .7rem; font-weight: 700; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); border-radius: 5px; cursor: pointer; padding: 0; }
+.wk.want { background: var(--want-bg); color: var(--want); border-color: var(--want); }
+.dc { font: inherit; font-size: .85rem; font-variant-numeric: tabular-nums; height: 32px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 5px; cursor: pointer; position: relative; padding: 0; }
+.dc.we { background: var(--surface-2); }
+.dc.stat::after { content: ""; position: absolute; top: 3px; right: 3px; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.dc.away { background: var(--away-bg); border-color: var(--away); color: var(--away); font-weight: 700; }
+.dc.pref { background: var(--pref-bg); border-color: var(--pref); color: var(--pref); font-weight: 700; }
+.dc.leave { background: var(--leave-bg); border-color: var(--leave); color: var(--leave); font-weight: 700; }
+.dc.wantw { box-shadow: inset 0 -3px 0 var(--want); }
+.dc.off, .wk.off { opacity: .35; cursor: not-allowed; }
+.empty { visibility: hidden; }
+.opts { display: grid; gap: 14px; }
+.chk { display: flex; gap: 10px; align-items: flex-start; }
+.chk input { margin-top: 4px; width: 18px; height: 18px; }
+.chk span small { display: block; color: var(--muted); }
+.slider { display: grid; gap: 6px; max-width: 640px; }
+.slider input[type=range] { width: 100%; accent-color: var(--accent); }
+.ticks { display: grid; grid-template-columns: repeat(4, 1fr); font-size: .8rem; color: var(--muted); }
+.ticks.t3 { grid-template-columns: repeat(3, 1fr); }
+.ticks.t3 span:nth-child(2) { text-align: center; } .ticks.t3 span:last-child { text-align: right; }
+[hidden] { display: none !important; }
+.submitbar { position: sticky; bottom: 12px; z-index: 5; box-shadow: 0 6px 24px rgba(0,0,0,.18); }
+.submitbar .dirty { font-size: .9rem; }
+.ticks span:nth-child(2) { text-align: center; } .ticks span:nth-child(3) { text-align: center; } .ticks span:last-child { text-align: right; }
+.choice { font-weight: 700; }
+.ovl { display: flex; gap: 16px; padding-left: 4px; }
+.status { font-size: .9rem; color: var(--muted); margin: 0; }
+.status:empty { display: none; }
+.summary { font-size: .9rem; color: var(--muted); }
+.tablewrap { overflow-x: auto; min-width: 0; }
+table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+th { text-align: left; font-family: var(--display); font-stretch: 85%; font-weight: 700; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding: 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.n { font-variant-numeric: tabular-nums; text-align: right; }
+.pill { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: .8rem; font-weight: 700; }
+.pill.ok { background: var(--want-bg); color: var(--want); }
+.pill.no { background: var(--away-bg); color: var(--away); }
+.pill.wait { background: var(--pref-bg); color: var(--pref); }
+.icugrid { display: flex; flex-wrap: wrap; gap: 4px; }
+.icugrid .wk { width: 52px; height: 30px; font-size: .72rem; }
+.icugrid .wk[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+textarea.copybox { width: 100%; min-height: 120px; font: .78rem ui-monospace, Menlo, Consolas, monospace; background: var(--surface-2); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+.cgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 14px; }
+fieldset.box { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px 12px; display: grid; gap: 8px; margin: 0; min-width: 0; }
+fieldset.box legend { font-family: var(--display); font-stretch: 85%; font-weight: 700; padding: 0 4px; }
+fieldset.box label { display: grid; gap: 3px; font-size: .9rem; }
+.cur { margin: 0; font-size: .9rem; }
+.cur b { color: var(--accent); }
+.linkbtn { font: inherit; background: none; border: none; color: var(--away); cursor: pointer; text-decoration: underline; padding: 0; }
+@media (max-width: 640px) {
+  table.stack thead { display: none; }
+  table.stack, table.stack tbody, table.stack tr, table.stack td { display: block; width: 100%; }
+  table.stack tr { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; margin-bottom: 8px; background: var(--surface); }
+  table.stack td { border: none; padding: 3px 0; text-align: left; display: flex; gap: 10px; justify-content: space-between; }
+  table.stack td.n { text-align: left; }
+  table.stack td::before { content: attr(data-label); font-weight: 600; color: var(--muted); flex: none; }
+  table.stack td:first-child { font-weight: 700; }
+  table.stack td:first-child::before { content: none; }
+  table.stack td .pill { white-space: normal; }
+  .ticks { font-size: .75rem; }
+}
+.navb { min-width: 40px; font-size: 1.2rem; padding: 4px 10px; }
+.scal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.scal .hd { font-family: var(--display); font-stretch: 80%; font-weight: 700; font-size: .75rem; color: var(--muted); text-transform: uppercase; padding: 0 4px; }
+.sday { background: var(--surface); border: 1px solid var(--line); border-radius: 7px; padding: 5px 6px; display: grid; gap: 2px; align-content: start; min-width: 0; min-height: 92px; }
+.sday.we { background: var(--surface-2); }
+.sday.pad { visibility: hidden; }
+.sday.focus { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.sday .dn { font-family: var(--display); font-stretch: 85%; font-weight: 800; display: flex; gap: 6px; align-items: baseline; }
+.sday .dn small { font-weight: 600; color: var(--accent); font-size: .7rem; font-family: var(--body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sday .dw { display: none; color: var(--muted); font-weight: 600; font-size: .8rem; }
+.sl { display: grid; grid-template-columns: 6.2ch minmax(0, 1fr); gap: 4px; font-size: .78rem; align-items: baseline; }
+.sl b { font-family: var(--display); font-stretch: 80%; font-size: .66rem; color: var(--muted); white-space: nowrap; }
+.sl span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sl span.me { font-weight: 700; color: var(--accent); }
+.sl span.dim { opacity: .35; }
+.mine { border-top: 1px solid var(--line); padding-top: 10px; }
+.mine ul { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .9rem; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 10px; }
+.tile { border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; display: grid; gap: 2px; background: var(--surface); }
+.tile .k { font-size: .82rem; color: var(--muted); font-weight: 600; }
+.tile .v { font-family: var(--display); font-stretch: 85%; font-size: 1.55rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.tile .s { font-size: .82rem; color: var(--muted); display: block; }
+.tile .s span { margin-right: 4px; }
+.tile .s .ok { color: var(--want); font-weight: 700; }
+.tile .s .warn { color: var(--pref); font-weight: 700; }
+.dchart { display: grid; gap: 4px; }
+.drow { display: grid; grid-template-columns: minmax(7.5rem, 11rem) minmax(0, 1fr) 7.5rem; gap: 8px; align-items: center; font-size: .88rem; border-radius: 6px; padding: 2px 4px; }
+.drow:hover, .drow:focus-visible { background: var(--surface-2); outline: none; }
+.drow.me { background: var(--accent-soft); }
+.drow .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.drow .val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.drow .val .bv { color: var(--overlay); font-weight: 600; margin-left: 6px; }
+.track { position: relative; height: 18px; }
+.track .zero { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--muted); opacity: .6; }
+.track .grid { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line); }
+.track .bar { position: absolute; top: 4px; height: 10px; background: var(--accent); }
+.track .bar.pos { border-radius: 0 4px 4px 0; }
+.track .bar.neg { border-radius: 4px 0 0 4px; }
+.track .bal { position: absolute; top: 7px; height: 4px; background: var(--overlay); border-radius: 2px; box-shadow: 0 0 0 1px var(--surface); }
+.track .balend { position: absolute; top: 3px; width: 3px; height: 12px; margin-left: -1.5px; background: var(--overlay); border-radius: 1px; }
+.fkey { display: flex; flex-wrap: wrap; gap: 14px; font-size: .8rem; color: var(--muted); margin: 4px 0 8px; }
+.fkey i { display: inline-block; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
+.fkey .k1 { width: 18px; height: 10px; background: var(--accent); }
+.fkey .k2 { width: 18px; height: 4px; background: var(--overlay); }
+.axis { display: grid; grid-template-columns: minmax(7.5rem, 11rem) minmax(0, 1fr) 7.5rem; gap: 8px; font-size: .72rem; color: var(--muted); padding: 0 4px; }
+.axis .ticks3 { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; }
+.ftip { position: fixed; z-index: 20; background: var(--fg); color: var(--bg); border-radius: 6px; padding: 6px 9px; font-size: .82rem; pointer-events: none; max-width: 260px; }
+@media (max-width: 760px) {
+  .scal { grid-template-columns: minmax(0, 1fr); }
+  .scal .hd, .sday.pad { display: none; }
+  .sday { min-height: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 10px; }
+  .sday .dn { grid-column: 1 / -1; }
+  .sday .dw { display: inline; }
+  .drow, .axis { grid-template-columns: 6.5rem minmax(0, 1fr) 3.6rem; }
+}
+.note { font-size: .85rem; background: var(--pref-bg); color: var(--pref); border-radius: 8px; padding: 8px 12px; }
+.signin { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; }
+.signin .panel { width: min(420px, 100%); display: grid; gap: 14px; }
+.signin label { display: grid; gap: 4px; font-size: .9rem; }
+.userbar { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; justify-content: flex-end; font-size: .85rem; }
+.userbar .link { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; }
+.busy { font-size: .9rem; }
+.busy li { margin: 4px 0; }
+.err { color: var(--away); font-weight: 600; }
+</style>
+</head>
+<body>
+<div id="signin" class="signin" hidden>
+  <form class="panel" id="signinForm" autocomplete="on">
+    <span class="eyebrow">Internal Medicine · AMS &amp; CMCU</span>
+    <h1>Call Requests</h1>
+    <p class="muted" style="margin:0">Sign in with the email and password the group's admin set up for you.</p>
+    <label>Email<input class="in" type="email" id="siEmail" autocomplete="username" required></label>
+    <label>Password<input class="in" type="password" id="siPass" autocomplete="current-password" required></label>
+    <button class="btn" id="siBtn" type="submit">Sign in</button>
+    <p class="status" id="siStatus" role="status"></p>
+    <p class="muted" style="margin:0;font-size:.85rem">Forgot your password? Ask the admin to reset it.</p>
+  </form>
+</div>
+<div id="loading" class="signin"><p class="muted">Loading…</p></div>
+<div id="app" hidden>
+<header class="top">
+  <div class="wrap">
+    <div class="row" style="justify-content:space-between"><span class="eyebrow">Internal Medicine · AMS &amp; CMCU</span><div class="userbar"><span id="ubWho"></span><button class="link" id="ubPass" type="button">Change password</button><button class="link" id="ubOut" type="button">Sign out</button></div></div>
+    <div id="pwBox" class="row" hidden style="margin:6px 0"><input class="in" type="password" id="pwNew" placeholder="New password (8+ characters)" autocomplete="new-password"><button class="btn quiet" id="pwSave" type="button">Save password</button><span class="status" id="pwStatus" role="status"></span></div>
+    <h1 id="pageTitle">2027 Call Requests</h1>
+    <p class="muted" style="margin:0" id="pageSub"></p>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tab-me" aria-selected="true" aria-controls="pane-me">My requests</button>
+      <button class="tab" role="tab" id="tab-sched" aria-selected="false" aria-controls="pane-sched">Schedule</button>
+      <button class="tab" role="tab" id="tab-fair" aria-selected="false" aria-controls="pane-fair">Fairness</button>
+      <button class="tab" role="tab" id="tab-admin" aria-selected="false" aria-controls="pane-admin">Admin</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="pane-me" role="tabpanel" aria-labelledby="tab-me" style="display:grid;gap:20px">
+    <div class="panel">
+      <div class="row">
+        <label for="who"><strong>I am</strong></label>
+        <select id="who" class="in"></select>
+        <span class="summary" id="lastSub"></span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="row" style="justify-content:space-between">
+        <h2>Dates</h2>
+        <div class="modes" role="group" aria-label="What a click marks">
+          <button class="mode" data-mode="away" aria-pressed="true"><span class="sw away"></span>Away</button>
+          <button class="mode" data-mode="pref" aria-pressed="false"><span class="sw pref"></span>Prefer off</button>
+          <button class="mode" data-mode="leave" aria-pressed="false"><span class="sw leave"></span>Long leave (reduces FTE)</button>
+          <button class="mode" data-mode="want" aria-pressed="false"><span class="sw want"></span>Want to be on service (whole week)</button>
+        </div>
+      </div>
+      <p class="muted" style="margin:0;font-size:.9rem">Click a day to mark it, click again to clear. Click a week number to mark the whole Monday–Sunday week. "Want to be on service" works on whole weeks only. A dot marks a stat holiday; greyed weeks are Christmas/New Year (shared separately). Long leave (parental, medical, sabbatical) is time away that also lowers your FTE for the year in proportion, so you aren't asked to make it up; ordinary time away is made up on other dates.</p>
+      <div class="months" id="months"></div>
+      <p class="summary" id="dateSummary"></p>
+      <p class="status" id="dateNote" role="status"></p>
+    </div>
+
+    <div class="panel opts">
+      <h2>Options</h2>
+      <label class="chk" for="optLocum"><input type="checkbox" id="optLocum"><span>Open to locums<small>A locum may take some of my service weeks. A week a locum covers counts as one of my weeks.</small></span></label>
+      <label class="chk" for="optWeekend"><input type="checkbox" id="optWeekend"><span>Open to trading weekend days for an equal number of weekdays<small>Someone else (<span data-pair-s>the shared position's</span> monthly weekend, or a locum) may cover some of my weekend days, and I take the same number of weekday shifts instead. People who tick this are relieved first.</small></span></label>
+      <div class="slider">
+        <label for="enSlider"><strong>Evening/night shifts (17:00–08:00):</strong> <span class="choice" id="enChoice"></span></label>
+        <input type="range" id="enSlider" min="0" max="3" step="1" value="0" aria-describedby="enHelp">
+        <div class="ticks" aria-hidden="true"><span>Spread out</span><span>Max 2/wk</span><span>Max 3/wk</span><span>Overlap</span></div>
+        <small class="muted" id="enHelp"></small>
+        <div class="ovl" id="ovlBox" hidden>
+          <label class="chk" for="ovlAMS"><input type="checkbox" id="ovlAMS"><span>Overlap with my AMS weeks</span></label>
+          <label class="chk" for="ovlCMCU"><input type="checkbox" id="ovlCMCU"><span>Overlap with my CMCU weeks</span></label>
+        </div>
+      </div>
+      <div class="slider" id="wkBox">
+        <label for="wkSlider"><strong>Service weeks:</strong> <span class="choice" id="wkChoice"></span></label>
+        <input type="range" id="wkSlider" min="0" max="2" step="1" value="0" aria-describedby="wkHelp">
+        <div class="ticks t3" aria-hidden="true"><span>Spread out</span><span>Some bunching OK</span><span>Bunch them</span></div>
+        <small class="muted" id="wkHelp"></small>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>What you've asked for</h2>
+      <p class="muted" style="margin:0;font-size:.9rem">Each date with when you first asked for it. Submitting again keeps the original time for dates you already had; only new or changed dates get the new time. Where two people ask for the same contested week, the earlier request counts (rule 28).</p>
+      <div class="tablewrap"><table id="mineTable" class="stack"></table></div>
+      <h3 style="margin:6px 0 0;font-size:1rem">Your submissions</h3>
+      <ul class="sublog" id="mineLog"></ul>
+    </div>
+    <div class="panel" id="busyPanel" hidden>
+      <h2>Busy weeks you're part of</h2>
+      <p class="muted" style="margin:0;font-size:.9rem">Weeks where more people asked to be away on weekdays than can be spared. The week goes first to whoever has won the fewest busy weeks in the past 12 months, then to whoever asked first, then by a recorded draw. Others' requests are shown only for these weeks. Waitlisted weekdays go to the scheduler as "prefer off".</p>
+      <ul class="busy" id="busyList"></ul>
+    </div>
+    <div class="panel submitbar">
+      <div class="row">
+        <button class="btn" id="submit">Submit requests</button>
+        <span class="dirty pending" id="dirty" hidden>You have changes that aren't submitted yet.</span>
+        <p class="status" id="subStatus" role="status"></p>
+      </div>
+    </div>
+
+  </section>
+
+  <section id="pane-sched" role="tabpanel" aria-labelledby="tab-sched" hidden style="gap:20px">
+    <div class="panel">
+      <div class="row" style="justify-content:space-between">
+        <div class="row">
+          <label for="schWho"><strong>Show</strong></label>
+          <select id="schWho" class="in"></select>
+        </div>
+        <div class="row" style="gap:6px">
+          <button class="btn quiet navb" id="schPrev" aria-label="Previous month">‹</button>
+          <h2 id="schTitle" style="min-width:9.5ch;text-align:center"></h2>
+          <button class="btn quiet navb" id="schNext" aria-label="Next month">›</button>
+        </div>
+      </div>
+      <p class="muted" style="margin:0;font-size:.85rem"><b>AMS D</b> day 08–17 · <b>AMS E/N</b> evening/night 17–08 · <b>CMCU</b> day 08–17 · <b>RCAC</b> morning. Shaded = weekend.</p>
+      <div class="scal" id="schCal"></div>
+      <div id="schMine" class="mine" hidden></div>
+    </div>
+    <div class="panel">
+      <h2>Add to your calendar</h2>
+      <p class="muted" style="margin:0;font-size:.9rem">Downloads the shifts for whoever is chosen in "Show" above (or everyone, with a file per person) as calendar files in a zip. Unzip and import: in Google Calendar, Settings › Import &amp; export; on an iPhone or Mac, open the file to add it to Apple Calendar; in Outlook, File › Open &amp; export › Import. A subscription link that updates by itself comes with the GitHub version.</p>
+      <div class="row"><button class="btn" id="icsBtn">Download calendar file</button><p class="status" id="icsStatus" role="status"></p></div>
+      <textarea class="copybox" id="icsBox" hidden readonly aria-label="Calendar file text"></textarea>
+    </div>
+  </section>
+
+  <section id="pane-fair" role="tabpanel" aria-labelledby="tab-fair" hidden style="gap:20px">
+    <div class="panel">
+      <h2 id="fairTitle">How even is the 2027 schedule?</h2>
+      <p class="muted" id="fairIntro" style="margin:0;font-size:.9rem">Each person's work is compared with their fair share: the year's total for that kind of shift × their FTE ÷ everyone's FTE. Time away is made up on other dates, so it doesn't lower anyone's share. <span data-pair-s>The shared position's</span> weekend share is set by their agreed weekend structure. Balances carry over from 2026 (total call shifts) and the published months, so people who did more before are given less in this plan and vice versa; the tiles show how far anyone's running balance is from even by the end of the plan.</p>
+      <div class="tiles" id="fairTiles"></div>
+      <p class="muted" id="fairPctNote" style="margin:0;font-size:.82rem">% of share = how far someone is from their fair share, divided by that share. SD (standard deviation) = the typical distance from fair share across everyone; the smaller, the more even. Half-time physicians have smaller shares, so the same one-shift difference is a bigger percentage for them. Stat holiday shifts are so few (about 1–3 a year each) that being one shift off looks huge in percent; read those in shifts.</p>
+    </div>
+    <div class="panel">
+      <div class="row" style="justify-content:space-between">
+        <h2 id="fairChartTitle">Compared with fair share</h2>
+        <div class="modes" role="group" aria-label="Measure" id="fairMetric"></div>
+      </div>
+      <div class="row" style="gap:8px">
+        <span class="muted" style="font-size:.9rem">Show differences as</span>
+        <div class="modes" role="group" aria-label="Units" id="fairUnit">
+          <button class="mode" data-u="shifts" aria-pressed="true">Shifts</button>
+          <button class="mode" data-u="pct" aria-pressed="false">% of share</button>
+        </div>
+      </div>
+      <p class="muted" style="margin:0;font-size:.85rem" id="fairChartNote"></p>
+      <div class="fkey" id="fairKey"></div>
+      <div class="dchart" id="fairChart" role="img"></div>
+      <div class="ftip" id="fairTip" hidden></div>
+    </div>
+    <div class="panel">
+      <h2>All figures</h2>
+      <p class="muted" id="fairAllNote" style="margin:0;font-size:.85rem">Done / share for each measure. Carried to next year = running balances (positive = did more than their share, so next year asks for less; for AMS−CMCU weeks, positive = leaned AMS, so next year leans CMCU).</p>
+      <div class="tablewrap"><table id="fairTable" class="stack"></table></div>
+    </div>
+  </section>
+
+  <section id="pane-admin" role="tabpanel" aria-labelledby="tab-admin" hidden style="gap:20px">
+    <div class="panel">
+      <h2>Requests received</h2>
+      <div class="tablewrap"><table id="subsTable" class="stack"></table></div>
+    </div>
+    <div class="panel" id="rosterPanel">
+      <h2>Group members</h2>
+      <p class="muted" style="margin:0;font-size:.9rem">Add someone joining the group, or set a last day for someone leaving. Changes go out with the requests file and take effect at the next re-plan. A new person's share counts from their start date (prorated, like long leave in reverse) and their balance starts at 0. Someone leaving is scheduled up to their last day, and their past shifts stay in everyone's history; whatever they are over or under their share when they go is shared out among the rest of the group by FTE. <span data-pair-s>The shared position's</span> shared position and the cardiologist are set up separately.</p>
+      <div class="tablewrap"><table id="rosterTable" class="stack"></table></div>
+      <h3 style="margin:6px 0 0;font-size:1rem">Add someone</h3>
+      <div class="row" style="gap:10px;align-items:flex-end">
+        <label style="display:grid;gap:4px;font-size:.85rem">Name<input class="in" id="rName" placeholder="First Last" autocomplete="off"></label>
+        <label style="display:grid;gap:4px;font-size:.85rem">FTE<select class="in" id="rFte"><option>1.0</option><option>0.75</option><option>0.5</option><option>0.25</option></select></label>
+        <label style="display:grid;gap:4px;font-size:.85rem">First day<input class="in" type="date" id="rStart"></label>
+        <label class="chk" for="rRcac" style="align-self:center"><input type="checkbox" id="rRcac" checked><span>Does RCAC</span></label>
+        <button class="btn" id="rAdd">Add to the group</button>
+      </div>
+      <p class="status" id="rosterStatus" role="status"></p>
+    </div>
+    <div class="panel">
+      <h2>Submission log</h2>
+      <p class="muted" style="margin:0;font-size:.9rem">Every submission, newest first, with what it added or removed. Each date keeps the time it was first asked for.</p>
+      <div class="tablewrap"><table id="logTable" class="stack"></table></div>
+    </div>
+    <div class="panel">
+      <div class="row" style="justify-content:space-between">
+        <h2>Contested weeks</h2>
+        <div class="row" style="gap:16px">
+          <label for="cap" class="row" style="gap:8px">Most people away in one week <input type="number" id="cap" class="in" min="1" max="9" value="3" style="width:5em"></label>
+          <label for="maxWins" class="row" style="gap:8px">Most contested weeks won per person per year <input type="number" id="maxWins" class="in" min="1" max="10" value="2" style="width:5em"></label>
+        </div>
+      </div>
+      <p class="muted" style="margin:0;font-size:.9rem">When more people ask to be away on weekdays of the same week than can be spared (everyone who takes call; <span data-pair-and>the two people sharing one FTE</span> count as half a person each, as they share one FTE), the week goes first to whoever has won the fewest contested weeks in the past 12 months (counting weeks won earlier this year), then to whoever submitted first, then by a recorded draw. Anyone who has already won the yearly limit goes last. Only weekday absences count (a stat Monday joined to the weekend before doesn't). Waitlisted weekdays go to the scheduler as "prefer off" rather than time away; weekend days stay as asked. Enter past wins below (none on record yet).</p>
+      <div class="tablewrap"><table id="contestTable" class="stack"></table></div>
+      <details><summary class="muted">Contested weeks won in the past 12 months</summary><div id="winsBox" class="row" style="margin-top:8px"></div></details>
+    </div>
+    <div class="panel">
+      <h2>ICU weeks</h2>
+      <p class="muted" style="margin:0;font-size:.9rem">From the ICU schedule (the on-call system's ICU calendars). Click every Monday–Sunday week with any ICU shift, including a week whose Monday only has the end of an overnight (00:00–08:00): the day an ICU overnight ends is kept off this schedule. No call here in a ticked week. Shifts in other groups (e.g. CDH) are requested off on "My requests" like any other time away.</p>
+      <div id="icuBox" style="display:grid;gap:12px"></div>
+    </div>
+    <div class="panel" id="changePanel">
+      <h2>Change who is on call</h2>
+      <p class="muted" style="margin:0;font-size:.9rem">Changes go on top of the published schedule; nobody else moves. When the scheduler re-reads the file it re-checks every rule and the fairness tallies, and flags anything a change breaks. A shift a locum takes from someone who ticked "Open to locums" still counts as theirs.</p>
+      <div class="cgrid">
+        <fieldset class="box">
+          <legend>One shift</legend>
+          <label for="chDate">Date <input type="date" id="chDate" class="in"></label>
+          <label for="chShift">Shift <select id="chShift" class="in"><option>AMS day</option><option>AMS evening/night</option><option>CMCU day</option><option>RCAC</option></select></label>
+          <p class="cur" id="chCur"></p>
+          <label for="chWho">New physician <select id="chWho" class="in"></select></label>
+          <label for="chLocName" id="chLocWrap" hidden>Locum's name <input id="chLocName" class="in" placeholder="Optional"></label>
+          <label for="chReason">Reason <input id="chReason" class="in" placeholder="e.g. swap, sick, locum"></label>
+          <button class="btn" id="chAdd">Add change</button>
+        </fieldset>
+        <fieldset class="box">
+          <legend>Locum for a whole service week</legend>
+          <label for="lwWeek">Week <select id="lwWeek" class="in"></select></label>
+          <label for="lwSvc">Service <select id="lwSvc" class="in"><option value="D">AMS</option><option value="C">CMCU</option></select></label>
+          <p class="cur" id="lwCur"></p>
+          <label for="lwName">Locum's name <input id="lwName" class="in" placeholder="Optional"></label>
+          <button class="btn" id="lwAdd">Book locum week</button>
+        </fieldset>
+      </div>
+      <p class="status" id="chStatus" role="status"></p>
+      <div class="tablewrap"><table id="chTable" class="stack"></table></div>
+    </div>
+
+    <div class="panel">
+      <h2>Send to the scheduler</h2>
+      <p class="muted" style="margin:0;font-size:.9rem">Rebuilding the schedule: once the request window closes, download requests.json and run the scheduler on it (about 20 minutes). It rebuilds the whole year from everyone's latest requests. After the schedule is published, use "Change who is on call" instead, so one change doesn't reshuffle everyone. In the GitHub version this becomes a "Rebuild schedule" button here.</p>
+      <div class="row">
+        <button class="btn" id="exportBtn">Download requests.json</button>
+        <button class="btn quiet" id="copyBtn">Copy instead</button>
+      </div>
+      <p class="status" id="expStatus" role="status"></p>
+      <textarea class="copybox" id="copyBox" hidden readonly aria-label="requests.json"></textarea>
+    </div>
+    <div class="panel">
+      <h2>Load files from the scheduler</h2>
+      <p class="muted" style="margin:0;font-size:.9rem">After publishing a month, load the scheduler's web_data.json here: everyone then sees the new published calendar and fairness figures. "Import requests" loads a requests.json (for example the old spreadsheet's requests) and keeps the times recorded in it; it replaces those people's requests.</p>
+      <div class="row">
+        <label class="btn quiet" for="pubFile" style="cursor:pointer">Load published calendar (web_data.json)<input type="file" id="pubFile" accept=".json,application/json" hidden></label>
+        <label class="btn quiet" for="reqFile" style="cursor:pointer">Import requests (requests.json)<input type="file" id="reqFile" accept=".json,application/json" hidden></label>
+      </div>
+      <p class="status" id="loadStatus" role="status"></p>
+    </div>
+    <div class="panel">
+      <h2>Sign-in accounts</h2>
+      <p class="muted" style="margin:0;font-size:.9rem">Two steps for each person. 1) In Supabase, Authentication › Users › Add user › Create new user: their email, a starting password, and tick "Auto Confirm User". 2) Here, link that email to their name. Only linked emails can see anything. Admins see everyone's requests and can change settings.</p>
+      <div class="tablewrap"><table id="acctTable" class="stack"></table></div>
+      <div class="row" style="gap:10px;align-items:flex-end">
+        <label style="display:grid;gap:4px;font-size:.85rem">Email<input class="in" type="email" id="acEmail" autocomplete="off"></label>
+        <label style="display:grid;gap:4px;font-size:.85rem">Physician<select class="in" id="acName"></select></label>
+        <label class="chk" for="acAdmin" style="align-self:center"><input type="checkbox" id="acAdmin"><span>Admin</span></label>
+        <button class="btn" id="acAdd" type="button">Link account</button>
+      </div>
+      <p class="status" id="acStatus" role="status"></p>
+    </div>
+  </section>
+</main>
+</div>
+
+<script id="sched" type="application/json">[]</script>
+<script id="webppl" type="application/json">[]</script>
+<script src="jszip.min.js"></script>
+<script src="supabase.js"></script>
+<script id="seed" type="application/json">{}</script>
+<script>
+window.startApp = (BOOT) => {
+  const $ = s => document.querySelector(s);
+  const SEED = JSON.parse(document.getElementById('seed').textContent);
+  const YEAR = SEED.year;
+  // Rolling schedule: published months are fixed; requests are open from the first unpublished day to the horizon
+  // (about 16 months ahead). Without a window this is a single calendar year.
+  const WIN = SEED.window || null;
+  const OPEN_FROM = WIN ? new Date(WIN.open_from + 'T00:00:00Z') : new Date(Date.UTC(YEAR, 0, 1));
+  const HORIZON = WIN ? new Date(WIN.horizon + 'T00:00:00Z') : new Date(Date.UTC(YEAR, 11, 31));
+  const LOCKED_THROUGH = WIN ? WIN.locked_through : '';
+  // no preview: only published months are shown; the months after them are planned from scratch each month
+  const NP = !!WIN && WIN.preview === false;
+  const PROJ = NP && WIN.projection_to ? WIN.projection_to : null;
+  const projLabel = () => PROJ ? new Date(PROJ + 'T12:00:00Z').toLocaleDateString('en-CA', { month: 'long', year: 'numeric', timeZone: 'UTC' }) : '';
+  const ltLabel = () => new Date(LOCKED_THROUGH + 'T12:00:00Z').toLocaleDateString('en-CA', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const PERIOD = WIN ? `${OPEN_FROM.getUTCFullYear()}–${String(HORIZON.getUTCFullYear()).slice(2)}` : String(YEAR);
+  const MONTH_LIST = [];
+  { let y = OPEN_FROM.getUTCFullYear(), m = OPEN_FROM.getUTCMonth();
+    while (Date.UTC(y, m, 1) <= HORIZON.getTime()) { MONTH_LIST.push([y, m]); if (++m === 12) { m = 0; y++; } } }
+  const KEY = WIN ? 'call-requests-rolling.v2' : 'call-requests-' + YEAR + '.v1';
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const DOW = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const WPATS = ['spread', 'some', 'bunch'];
+  const WLABEL = { spread: 'Spread out', some: 'Some bunching OK', bunch: 'Bunch them' };
+  const WHELP = {
+    spread: 'Weeks evenly apart through the year (a full-timer about every 5 weeks), at most 2 in any 6 weeks, no week-on/week-off/week-on, and no weekday evening/nights in the week just before or after a service week.',
+    some: 'A single week between service weeks is fine (not two in a row), and evening/nights next to a service week are fine.',
+    bunch: 'Back-to-back service weeks are fine (e.g. AMS then CMCU), for longer stretches off in between.' };
+  const PATTERNS = ['spread','max2','max3','overlap'];
+  const PLABEL = {spread:'As spread out as possible', max2:'Up to 2 per week', max3:'Up to 3 per week', overlap:'Up to 3 per week, overlapping my service days'};
+  const PHELP = {
+    spread: 'At most 2 a week, and the scheduler keeps them as far apart as it can.',
+    max2: 'Never more than 2 in a week.',
+    max3: 'Up to 3 in a week, so they can be grouped together.',
+    overlap: 'Up to 3 a week, and allowed on the same day as your own service shift (08:00 straight to 08:00), then working the next morning.'
+  };
+  const IS_ADMIN = !!BOOT.me.is_admin, ME = BOOT.me.name;
+  const GROUPS = BOOT.groups;           // {pair: [..], icu: [..], cardiologists: [..]} from the published data / settings
+  const ICU = GROUPS.icu;
+  const ROTATION_EXCLUDE = [...GROUPS.pair, ...GROUPS.cardiologists];
+  // Busy weeks: everyone who takes call competes on the same rules. The shared-FTE pair (sharing one FTE) count as half a
+  // person each toward the limit; the cardiologist doesn't take call and isn't included.
+  const CONTEST_EXCLUDE = GROUPS.cardiologists;
+  const PAIR = GROUPS.pair;
+  const pairNames = PAIR.map(n => n.split(' ')[0]);
+  document.querySelectorAll('[data-pair-s]').forEach(e => { if (PAIR.length === 2) e.textContent = (/^The/.test(e.textContent) ? '' : '') + pairNames.join(' & ') + "'s"; });
+  document.querySelectorAll('[data-pair-and]').forEach(e => { if (PAIR.length === 2) e.textContent = pairNames.join(' and '); });
+  const contestWeight = n => PAIR.includes(n) ? 0.5 : 1;
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const D = (y,m,d) => new Date(Date.UTC(y,m,d));
+  const iso = d => d.toISOString().slice(0,10);
+  const add = (d,n) => new Date(d.getTime() + n*86400000);
+  const dow = d => (d.getUTCDay()+6)%7;
+  const mondayOf = d => add(d, -dow(d));
+
+  // BC stat holidays (observed) for marking
+  function nthMonday(y,m,n){ let d=D(y,m,1); while(dow(d)!==0) d=add(d,1); return add(d,7*(n-1)); }
+  function easter(y){ const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451); const mo=Math.floor((h+l-7*m+114)/31), da=((h+l-7*m+114)%31)+1; return D(y,mo-1,da); }
+  const obs = d => dow(d)===5 ? add(d,2) : dow(d)===6 ? add(d,1) : d;
+  const STATS = new Map();
+  const addStats = function(y){ const put=(d,n)=>STATS.set(iso(d),n); put(obs(D(y,0,1)),"New Year's Day"); put(nthMonday(y,1,3),'Family Day'); put(add(easter(y),-2),'Good Friday'); let v=D(y,4,24); while(dow(v)!==0) v=add(v,-1); put(v,'Victoria Day'); put(obs(D(y,6,1)),'Canada Day'); put(nthMonday(y,7,1),'BC Day'); put(nthMonday(y,8,1),'Labour Day'); put(obs(D(y,8,30)),'Truth and Reconciliation Day'); put(nthMonday(y,9,2),'Thanksgiving'); put(obs(D(y,10,11)),'Remembrance Day'); put(obs(D(y,11,25)),'Christmas Day'); }; for (let y = Math.min(YEAR, OPEN_FROM.getUTCFullYear()) - 1; y <= HORIZON.getUTCFullYear() + 1; y++) addStats(y);
+  const isHolidayWeek = mon => [0,1,2,3,4,5,6].some(i => /-(12-25|01-01)$/.test(iso(add(mon,i))));
+  const scheduledMondays = [];
+  if (WIN) { let m = mondayOf(OPEN_FROM); while (m <= HORIZON) { if (!isHolidayWeek(m)) scheduledMondays.push(iso(m)); m = add(m,7); } }
+  else { let m = D(YEAR,0,1); while (dow(m)!==0) m = add(m,1); while (m.getUTCFullYear()===YEAR) { if (!isHolidayWeek(m)) scheduledMondays.push(iso(m)); m = add(m,7); } }
+  const openDay = k => k >= iso(OPEN_FROM) && k <= iso(HORIZON);     // requests only in unpublished months
+  // Christmas/New Year observed on a Monday outside the holiday weeks (e.g. Jan 3, 2028): part of the break
+  const isBreakDay = k => /^(New Year's Day|Christmas Day)$/.test(STATS.get(k) || '') && !/-(12-25|01-01)$/.test(k);
+  // the days the week physicians cover Mon-Fri, as the scheduler sees them: a stat Monday joined to the weekend
+  // before, a Good Friday joined to the weekend, and a break day are not weekdays of that week
+  function weekdayBlock(mon) {
+    const ds = [0,1,2,3,4].map(i => iso(add(new Date(mon + 'T00:00:00Z'), i)));
+    const prevSched = scheduledMondays.includes(iso(add(new Date(mon + 'T00:00:00Z'), -7)));
+    return ds.filter((k, i) => !isBreakDay(k) && !(i === 0 && STATS.has(k) && prevSched) && !(i === 4 && STATS.has(k)));
+  }
+  const scheduledDayCount = scheduledMondays.length * 7 - [...STATS.keys()].filter(isBreakDay).length;
+  // recorded random draw for tied requests: a fixed hash of year, week and name, so anyone can re-check it
+  function draw(mon, n) { let h = 2166136261; for (const ch of `${YEAR}|${mon}|${n}`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } return h; }
+
+  if (WIN) {
+    const md = d => `${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+    const lt = new Date(LOCKED_THROUGH + 'T00:00:00Z');
+    $('#pageTitle').textContent = `Call Requests · ${md(OPEN_FROM)} to ${md(HORIZON)}`;
+    $('#pageSub').textContent = NP
+      ? `Published (fixed) through ${md(lt)}; changes there go through the admin. Each month the next month is planned from everyone's requests and published.`
+      : `Published (fixed) through ${md(lt)}; changes there go through the admin. Later months are provisional: they are re-planned each month as requests come in, moving as little as possible.`;
+    $('#fairTitle').textContent = NP ? `Where everyone stands, through ${md(lt)}` : `How even is the plan for ${PERIOD}?`;
+  }
+  // ---------- state ----------
+  // Everything comes from the database at sign-in (BOOT). A member's state.subs holds their own requests in full and,
+  // for other people, only their weekday dates in contested weeks; an admin's holds everyone's.
+  const ST = BOOT.settings;
+  const state = { subs: {}, icu: JSON.parse(JSON.stringify(ST.icu || {})), wins: { ...(ST.wins || {}) }, cap: ST.cap ?? 3,
+    maxWins: ST.maxWins ?? 2, who: ME, overrides: JSON.parse(JSON.stringify(BOOT.overrides || [])),
+    roster: JSON.parse(JSON.stringify(ST.roster || {})) };      // group changes (Admin tab): {name: {fte, start, end, does_rcac, added}}
+  SEED.submissions.forEach(x => { state.subs[x.name] = JSON.parse(JSON.stringify(x)); });
+  // admins: settings and on-call changes are saved to the database a moment after each change
+  let saveTimer = null;
+  const settingsNow = () => ({ ...ST, icu: state.icu, wins: state.wins, cap: state.cap, maxWins: state.maxWins, roster: state.roster,
+    groups: { ...(ST.groups || {}), icu: ICU }, weights: Object.fromEntries([...PAIR.map(n => [n, 0.5]), ...CONTEST_EXCLUDE.map(n => [n, 0])]) });
+  const save = () => {
+    if (!IS_ADMIN) return;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(async () => {
+      try { await BOOT.api.saveGroup('settings', settingsNow()); await BOOT.api.saveGroup('overrides', state.overrides); }
+      catch (e) { alert('Could not save the admin changes: ' + (e.message || e)); }
+    }, 600);
+  };
+  let draft, mode = 'away';
+  const names = BOOT.names.slice();
+
+  let _ppl0 = null;
+  function baseFte(n) {
+    if (!_ppl0) { try { _ppl0 = JSON.parse(document.getElementById('webppl').textContent); } catch (e) { _ppl0 = []; } }
+    const p = _ppl0.find(x => x.name === n);
+    return p ? (p.fte_contract ?? p.fte) : null;
+  }
+  function loadDraft() {
+    const s = state.subs[state.who];
+    draft = { away: new Set(s.away||[]), pref: new Set(s.prefer_off||[]), leave: new Set(s.leave||[]), want: new Set(s.want_weeks||[]),
+      locum: !!s.open_to_locums, weekend: !!s.weekend_cover_ok, pattern: s.evening_pattern || 'spread', ovl: new Set(s.overlap_services||[]),
+      wpat: WPATS.includes(s.week_pattern) ? s.week_pattern : 'spread' };
+  }
+
+  // ---------- who ----------
+  function fillWho() { $('#who').innerHTML = names.map(n => `<option value="${esc(n)}">${esc(n)}${state.roster[n] && state.roster[n].end ? ' (last day ' + esc(state.roster[n].end) + ')' : state.roster[n] && state.roster[n].start ? ' (from ' + esc(state.roster[n].start) + ')' : ''}</option>`).join(''); }
+  fillWho();
+  $('#who').value = state.who;
+  $('#who').disabled = !IS_ADMIN;
+  $('#who').addEventListener('change', e => { state.who = e.target.value; loadDraft(); renderAll(); renderBusy(); $('#subStatus').textContent = ''; });
+
+  // ---------- modes ----------
+  document.querySelectorAll('.mode').forEach(b => b.addEventListener('click', () => {
+    mode = b.dataset.mode;
+    document.querySelectorAll('.mode').forEach(x => x.setAttribute('aria-pressed', x === b));
+  }));
+
+  // ---------- calendar ----------
+  function renderCalendar() {
+    let html = '';
+    for (const [yy, m] of MONTH_LIST) {
+      const first = D(yy, m, 1);
+      let cells = '<span></span>' + DOW.map(d => `<span class="hd">${d[0]}${d[1]}</span>`).join('');
+      let d = mondayOf(first);
+      while (d.getUTCMonth() === m || (d < first)) {
+        const mon = iso(d);
+        const sched = scheduledMondays.includes(mon);
+        const wn = Math.ceil((scheduledMondays.indexOf(mon) + 1));
+        cells += `<button class="wk${draft.want.has(mon) ? ' want' : ''}${sched ? '' : ' off'}" data-week="${mon}" ${sched ? '' : 'disabled'} title="${sched ? 'Week of ' + mon : 'Shared separately'}" aria-label="Whole week of ${mon}">${sched ? 'W' + wn : '—'}</button>`;
+        for (let i = 0; i < 7; i++) {
+          const dd = add(d, i), k = iso(dd);
+          if (dd.getUTCMonth() !== m) { cells += '<span class="dc empty"></span>'; continue; }
+          const cls = ['dc'];
+          if (i >= 5) cls.push('we');
+          if (STATS.has(k)) cls.push('stat');
+          if (draft.away.has(k)) cls.push('away'); else if (draft.pref.has(k)) cls.push('pref'); else if (draft.leave.has(k)) cls.push('leave');
+          if (draft.want.has(mon)) cls.push('wantw');
+          const brk = isBreakDay(k), shut = !openDay(k);
+          if (!sched || brk || shut) cls.push('off');
+          const kd = draft.away.has(k) ? 'away' : draft.pref.has(k) ? 'prefer_off' : draft.leave.has(k) ? 'leave' : null;
+          const t = (STATS.get(k) ? STATS.get(k) + ' · ' : '') + (kd ? KLABEL[kd] + ' (asked for: ' + fmtStamp(stampOf(state.subs[state.who], kd, k)) + ')' : '');
+          const tip = brk ? STATS.get(k) + ' · Christmas break (shared separately)' : shut ? 'Published: changes go through the admin' : t;
+          cells += `<button class="${cls.join(' ')}" data-day="${k}" ${sched && !brk && !shut ? '' : 'disabled'} title="${esc(tip)}" aria-label="${k} ${esc(t)}">${dd.getUTCDate()}</button>`;
+        }
+        d = add(d, 7);
+        if (d.getUTCMonth() !== m && d > first) break;
+      }
+      html += `<div class="month"><h3>${MONTHS[m]}${WIN ? ' ' + yy : ''}</h3><div class="mgrid">${cells}</div></div>`;
+    }
+    $('#months').innerHTML = html;
+    renderMine(); if (typeof renderDirty === 'function') renderDirty();
+    const nA = draft.away.size, nP = draft.pref.size, nW = draft.want.size;
+    const nL = [...draft.leave].filter(k => !isBreakDay(k) && openDay(k) && scheduledMondays.includes(iso(mondayOf(new Date(k + "T00:00:00Z"))))).length, base = baseFte(state.who);
+    const schedDays = scheduledDayCount;
+    const nFixed = WIN ? [...draft.away, ...draft.pref, ...draft.leave].filter(k => !openDay(k)).length : 0;
+    $('#dateSummary').textContent = `${nA} day${nA===1?'':'s'} away · ${nP} prefer off · ${nW} week${nW===1?'':'s'} wanted on service` +
+      (nFixed ? ` · ${nFixed} of these day${nFixed===1?' is':'s are'} in the published months before ${MONTHS[OPEN_FROM.getUTCMonth()]} ${OPEN_FROM.getUTCFullYear()}, which the calendar doesn't show: see "What you've asked for" below` : '') +
+      (nL && base ? ` · ${nL} day${nL===1?'':'s'} long leave: FTE for ${PERIOD} about ${(base * (1 - nL / schedDays)).toFixed(2)} (from ${base})` : '');
+  }
+  // A week can't be both wanted on service and contain days away or preferred off: the last choice wins.
+  const weekDays = mon => [0,1,2,3,4,5,6].map(i => iso(add(new Date(mon + 'T00:00:00Z'), i)));
+  const monOf = k => iso(mondayOf(new Date(k + 'T00:00:00Z')));
+  function clearDaysIn(mon) {
+    let n = 0;
+    weekDays(mon).forEach(k => { if (draft.away.delete(k)) n++; if (draft.pref.delete(k)) n++; if (draft.leave.delete(k)) n++; });
+    return n;
+  }
+  function unwant(mon) { return draft.want.delete(mon); }
+  $('#months').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || b.disabled) return;
+    let note = '';
+    if (mode === 'want') {
+      const mon = b.dataset.week || monOf(b.dataset.day);
+      if (draft.want.has(mon)) draft.want.delete(mon);
+      else {
+        draft.want.add(mon);
+        const n = clearDaysIn(mon);
+        if (n) note = `Week of ${mon} marked as wanted on service, so the ${n} away/prefer-off day${n===1?'':'s'} in it ${n===1?'was':'were'} cleared.`;
+      }
+    } else {
+      const set = draft[mode], others = ['away', 'pref', 'leave'].filter(x => x !== mode).map(x => draft[x]);
+      const days = (b.dataset.week ? weekDays(b.dataset.week) : [b.dataset.day]).filter(k => !isBreakDay(k) && openDay(k));
+      const clear = days.every(k => set.has(k));
+      days.forEach(k => { if (clear) set.delete(k); else { set.add(k); others.forEach(o => o.delete(k)); } });
+      if (!clear) {
+        const mon = monOf(days[0]);
+        if (unwant(mon)) note = `Week of ${mon} is no longer marked as wanted on service, because a wanted week can't include days away or preferred off.`;
+      }
+    }
+    $('#dateNote').textContent = note;
+    renderCalendar();
+  });
+
+  // ---------- options ----------
+  function renderOptions() {
+    $('#optLocum').checked = draft.locum;
+    $('#optWeekend').checked = draft.weekend;
+    const i = PATTERNS.indexOf(draft.pattern);
+    $('#enSlider').value = i < 0 ? 0 : i;
+    $('#enChoice').textContent = PLABEL[draft.pattern];
+    $('#enHelp').textContent = PHELP[draft.pattern];
+    $('#ovlBox').hidden = draft.pattern !== 'overlap';
+    $('#ovlAMS').checked = draft.ovl.has('AMS');
+    $('#ovlCMCU').checked = draft.ovl.has('CMCU');
+    const isPair = PAIR.includes(state.who), isCard = CONTEST_EXCLUDE.includes(state.who);
+    $('#optWeekend').disabled = isPair || isCard;
+    $('#wkBox').hidden = isPair || isCard;               // only the weekly rotation has service weeks
+    $('#wkSlider').value = WPATS.indexOf(draft.wpat);
+    $('#wkChoice').textContent = WLABEL[draft.wpat];
+    $('#wkHelp').textContent = WHELP[draft.wpat];
+    renderDirty();
+  }
+  $('#optLocum').addEventListener('change', e => { draft.locum = e.target.checked; renderDirty(); });
+  $('#optWeekend').addEventListener('change', e => { draft.weekend = e.target.checked; renderDirty(); });
+  $('#wkSlider').addEventListener('input', e => { draft.wpat = WPATS[+e.target.value]; renderOptions(); });
+  // unsubmitted changes (shown in the floating submit bar)
+  function renderDirty() {
+    const s = state.subs[state.who] || {}, same = (a, b) => [...a].sort().join() === [...(b || [])].sort().join();
+    const clean = same(draft.away, s.away) && same(draft.pref, s.prefer_off) && same(draft.leave, s.leave) && same(draft.want, s.want_weeks)
+      && draft.locum === !!s.open_to_locums && draft.weekend === !!s.weekend_cover_ok && draft.pattern === (s.evening_pattern || 'spread')
+      && (draft.pattern !== 'overlap' || same(draft.ovl, s.overlap_services)) && draft.wpat === (s.week_pattern || 'spread');
+    $('#dirty').hidden = clean;
+  }
+  $('#enSlider').addEventListener('input', e => {
+    draft.pattern = PATTERNS[+e.target.value];
+    if (draft.pattern === 'overlap' && !draft.ovl.size) { draft.ovl.add('AMS'); draft.ovl.add('CMCU'); }
+    renderOptions();
+  });
+  $('#ovlAMS').addEventListener('change', e => { e.target.checked ? draft.ovl.add('AMS') : draft.ovl.delete('AMS'); renderDirty(); });
+  $('#ovlCMCU').addEventListener('change', e => { e.target.checked ? draft.ovl.add('CMCU') : draft.ovl.delete('CMCU'); renderDirty(); });
+
+  // ---------- submit ----------
+  const fmtTime = t => t ? new Date(/[zZ]|[+-]\d\d:\d\d$/.test(t) ? t : t + 'Z').toLocaleString(undefined, {year:'numeric', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : 'not yet submitted';
+  // ---------- when each date was asked for ----------
+  // sub.requested_at = {away: {date: time}, prefer_off: {...}, leave: {...}, want_weeks: {monday: time}}: the time each
+  // date was first submitted in that category ('' = carried over from the old spreadsheet). sub.history = every
+  // submission: {at, added: {kind: [dates]}, removed: {...}, options: [what changed]}.
+  const KINDS = [['away', 'away', 'Away'], ['pref', 'prefer_off', 'Prefer off'], ['leave', 'leave', 'Long leave'], ['want', 'want_weeks', 'Want on service']];
+  const KLABEL = Object.fromEntries(KINDS.map(([, sk, l]) => [sk, l]));
+  function stampOf(s, sk, k) {          // when date k was submitted as kind sk; null = not submitted
+    if (!s || !(s[sk] || []).includes(k)) return null;
+    const ra = (s.requested_at || {})[sk] || {};
+    return ra[k] ?? s.submitted_at ?? '';
+  }
+  const fmtStamp = st => st === null ? 'not submitted yet' : st === '' ? 'from the old spreadsheet' : fmtTime(st);
+  const shortD = k => new Date(k + 'T12:00:00Z').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+  function runs(dates, step) {          // consecutive dates -> "Mon, Apr 12, 2027 – Fri, Apr 16, 2027"
+    const out = []; let a = null, b = null;
+    dates.forEach(k => { if (b && iso(add(new Date(b + 'T00:00:00Z'), step)) === k) b = k; else { if (a) out.push([a, b]); a = b = k; } });
+    if (a) out.push([a, b]);
+    return out;
+  }
+  const runTxt = ([a, b]) => a === b ? shortD(a) : `${shortD(a)} – ${shortD(b)}`;
+  function changeTxt(h) {
+    const part = (obj, verb) => Object.entries(obj || {}).map(([sk, ds]) => {
+      const step = sk === 'want_weeks' ? 7 : 1;
+      return `${verb} ${KLABEL[sk].toLowerCase()}${sk === 'want_weeks' ? ' (week of)' : ''}: ${runs([...ds].sort(), step).map(runTxt).join('; ')}`;
+    });
+    const bits = [...part(h.added, 'added'), ...part(h.removed, 'removed'), ...(h.options && h.options.length ? ['changed ' + h.options.join(', ')] : [])];
+    return bits.length ? bits.join(' · ') : 'no changes';
+  }
+  function renderMine() {
+    const s = state.subs[state.who], rows = [];
+    KINDS.forEach(([dk, sk, label]) => {
+      const step = sk === 'want_weeks' ? 7 : 1;
+      // group consecutive dates asked for at the same time
+      const groups = {};
+      // (split where the published months end, so each run is all published or all open)
+      [...draft[dk]].sort().forEach(k => { const st = stampOf(s, sk, k); const g = (st === null ? 'null' : st) + '|' + (WIN && !openDay(k) ? 'f' : 'o'); (groups[g] = groups[g] || []).push(k); });
+      Object.entries(groups).forEach(([g, ds]) => { const st = g.slice(0, g.lastIndexOf('|'));
+        runs(ds, step).forEach(r => rows.push({ r, label: sk === 'want_weeks' ? label + ' (week of)' : label, st: st === 'null' ? null : st })); });
+      (s[sk] || []).filter(k => !draft[dk].has(k)).forEach(k => rows.push({ r: [k, k], label, st: stampOf(s, sk, k), gone: true }));
+    });
+    rows.sort((x, y) => x.r[0] < y.r[0] ? -1 : x.r[0] > y.r[0] ? 1 : 0);
+    $('#mineTable').innerHTML = rows.length ? `<thead><tr><th>Dates</th><th>Request</th><th>Asked for</th></tr></thead><tbody>` + rows.map(x =>
+      `<tr><td>${x.gone ? '<s>' : ''}${esc(runTxt(x.r))}${x.gone ? '</s>' : ''}</td><td data-label="Request">${esc(x.label)}${WIN && !openDay(x.r[0]) ? ` <span class="muted">· published month (fixed; changes go through the admin)</span>` : ''}</td><td data-label="Asked for">${
+        x.gone ? '<span class="pending">removed: submit to confirm</span>' : x.st === null ? '<span class="pending">not submitted yet</span>' : esc(fmtStamp(x.st))}</td></tr>`).join('') + '</tbody>'
+      : '<tbody><tr><td class="muted">No dates asked for yet.</td></tr></tbody>';
+    const hist = [...(s.history || [])].reverse();
+    $('#mineLog').innerHTML = hist.length ? hist.map(h => `<li><b>${esc(fmtTime(h.at))}</b>: ${esc(changeTxt(h))}</li>`).join('')
+      : `<li class="muted">${s.submitted_at ? 'Submitted ' + esc(fmtTime(s.submitted_at)) + ' (before the log started)' : 'Carried over from the old spreadsheet; nothing submitted on this form yet.'}</li>`;
+  }
+  $('#submit').addEventListener('click', async () => {
+    if (draft.pattern === 'overlap' && !draft.ovl.size) { $('#subStatus').textContent = 'Pick AMS and/or CMCU for the overlap option, or move the slider back.'; return; }
+    const prev = state.subs[state.who] || {};
+    const next = { name: state.who, away: [...draft.away].sort(), prefer_off: [...draft.pref].sort(), leave: [...draft.leave].sort(),
+      want_weeks: [...draft.want].sort(), open_to_locums: draft.locum, weekend_cover_ok: draft.weekend,
+      evening_pattern: draft.pattern, overlap_services: draft.pattern === 'overlap' ? [...draft.ovl].sort() : [], week_pattern: draft.wpat };
+    const options = [];
+    if ((prev.week_pattern || 'spread') !== next.week_pattern) options.push('service weeks: ' + WLABEL[next.week_pattern].toLowerCase());
+    if (!!prev.open_to_locums !== next.open_to_locums) options.push('open to locums: ' + (next.open_to_locums ? 'yes' : 'no'));
+    if (!!prev.weekend_cover_ok !== next.weekend_cover_ok) options.push('weekend trade: ' + (next.weekend_cover_ok ? 'yes' : 'no'));
+    if ((prev.evening_pattern || 'spread') !== next.evening_pattern || (prev.overlap_services || []).join() !== next.overlap_services.join())
+      options.push('evening/nights: ' + PLABEL[next.evening_pattern].toLowerCase() + (next.overlap_services.length ? ' (' + next.overlap_services.join(', ') + ')' : ''));
+    // the weeks whose weekdays these dates fall on (the database uses them to find contested weeks)
+    const weeksOf = set => scheduledMondays.filter(mon => weekdayBlock(mon).some(k => set.has(k)));
+    $('#submit').disabled = true; $('#subStatus').textContent = 'Saving…';
+    try {
+      const saved = await BOOT.api.submit(state.who, next, options, weeksOf(draft.away), weeksOf(draft.leave));
+      state.subs[state.who] = saved;
+      $('#subStatus').textContent = `Submitted ${fmtTime(saved.submitted_at)}. Dates you already had keep the time you first asked for them.`;
+      renderLast(); renderMine(); if (IS_ADMIN) renderAdmin(); renderDirty();
+      if (!IS_ADMIN) { try { BOOT.mergeContested(state.subs, await BOOT.api.contested(), ME); } catch (e) {} }
+      renderBusy();
+    } catch (e) {
+      $('#subStatus').innerHTML = '<span class="err">Not saved: ' + esc(e.message || e) + '. Your changes are still on the page; try again.</span>';
+    } finally { $('#submit').disabled = false; }
+  });
+  function renderLast() { const s = state.subs[state.who]; $('#lastSub').textContent = 'Last submitted: ' + fmtTime(s.submitted_at); }
+
+  // ---------- admin ----------
+  // Contested weeks: more of the weekly rotation away on WEEKDAYS (or on ICU) than can be spared. Weeks are decided
+  // in date order; each week won counts against the winner in later contested weeks this year (rule 28-29).
+  // Waitlisted people's days that week are exported as "prefer off", not as hard time away.
+  function contested() {
+    const cap = +state.cap || 3;
+    const rot = names.filter(n => !CONTEST_EXCLUDE.includes(n));
+    const wins = {}, thisYear = {}; rot.forEach(n => { wins[n] = +(state.wins[n] || 0); thisYear[n] = 0; });
+    const maxWins = +state.maxWins || 2;
+    const out = [];
+    scheduledMondays.forEach(mon => {
+      const wkdays = weekdayBlock(mon);
+      // ICU weeks and long leave are fixed absences: they count toward the limit but are never waitlisted
+      const icuAway = rot.filter(n => (state.icu[n] || []).includes(mon) || (state.subs[n] && (state.subs[n].leave || []).some(k => wkdays.includes(k))));
+      const req = rot.filter(n => !icuAway.includes(n) && state.subs[n] && (state.subs[n].away || []).some(k => wkdays.includes(k)));
+      const W = list => list.reduce((s, n) => s + contestWeight(n), 0);
+      if (W(icuAway) + W(req) <= cap) return;
+      const room = Math.max(0, cap - W(icuAway));
+      // order: anyone already at this year's limit of contested wins goes last (rule 30); then fewest wins in the
+      // past 12 months; then first to submit; then the recorded draw
+      // requests carried over from the spreadsheet have no time stamp: they came before the form, so count as earliest
+      // when this person first asked for a weekday off in this week (each date keeps its own time)
+      const sub = n => { const s = state.subs[n]; const ts = (s.away || []).filter(k => wkdays.includes(k)).map(k => stampOf(s, 'away', k) || '0').sort(); return ts[0] || '0'; };
+      const capped = n => thisYear[n] >= maxWins ? 1 : 0;
+      const order = [...req].sort((a, b) => (capped(a) - capped(b)) || (wins[a] - wins[b]) || (sub(a) < sub(b) ? -1 : sub(a) > sub(b) ? 1 : 0) || (draw(mon, a) - draw(mon, b)));
+      const winsBefore = Object.fromEntries(order.map(n => [n, wins[n]]));
+      const why = {};
+      order.forEach(n => {
+        const tied = order.some(o => o !== n && !capped(o) && wins[o] === wins[n] && sub(o) === sub(n));
+        why[n] = capped(n) ? `at the limit of ${maxWins} this year` : tied ? 'tie broken by draw' : ''; });
+      // grant in priority order while there is room (a half-person can fill a half place left over)
+      const granted = [], waitlist = [];
+      let used = 0;
+      order.forEach(n => { if (used + contestWeight(n) <= room + 1e-9) { granted.push(n); used += contestWeight(n); } else waitlist.push(n); });
+      granted.forEach(n => { wins[n] += 1; thisYear[n] += 1; });
+      // only the weekday absences that made the week contested are waitlisted; weekend days stay as asked
+      out.push({ mon, icuAway, order, granted, waitlist, winsBefore, why, days: wkdays });
+    });
+    return out;
+  }
+  function renderBusy() {
+    const mine = contested().filter(c => c.order.includes(state.who) || c.icuAway.includes(state.who));
+    $('#busyPanel').hidden = !mine.length;
+    $('#busyList').innerHTML = mine.map(c => {
+      const me = c.order.includes(state.who) ? (c.granted.includes(state.who) ? '<b>you are in</b>' : '<b class="pending">you are on the waitlist</b>') : 'you are away for ICU or long leave';
+      const order = c.order.map((n, i) => `${i + 1}. ${esc(n)}${n === state.who ? ' (you)' : ''}: ${c.granted.includes(n) ? 'in' : 'waitlist'}${c.why[n] ? ' (' + esc(c.why[n]) + ')' : ''}`).join('; ');
+      return `<li>Week of ${esc(shortD(c.mon))}: ${me}. Up to ${+state.cap || 3} away${c.icuAway.length ? '; already away (ICU or long leave): ' + c.icuAway.map(esc).join(', ') : ''}. Order: ${order}.</li>`;
+    }).join('');
+  }
+  // ---------- group members ----------
+  const hasShifts = n => { try { return JSON.parse(document.getElementById('sched').textContent).some(r => r.slice(1, 5).includes(n)); } catch (e) { return false; } };
+  function renderRoster() {
+    const rows = names.filter(n => !CONTEST_EXCLUDE.includes(n) || PAIR.includes(n)).filter(n => !GROUPS.cardiologists.includes(n));
+    $('#rosterTable').innerHTML = `<thead><tr><th>Physician</th><th>FTE</th><th>First day</th><th>Last day</th><th></th></tr></thead><tbody>` + rows.map(n => {
+      const r = state.roster[n] || {}, fte = r.fte ?? baseFte(n) ?? '';
+      let act;
+      if (PAIR.includes(n)) act = '<span class="muted">shared position: set up separately</span>';
+      else if (r.end) act = `<button class="btn quiet" data-undo-end="${esc(n)}">Keep (clear last day)</button>`;
+      else act = `<input class="in" type="date" data-end-for="${esc(n)}" aria-label="Last day for ${esc(n)}"> <button class="btn quiet" data-set-end="${esc(n)}">Set last day</button>` +
+        (r.added && !hasShifts(n) ? ` <button class="btn quiet" data-undo-add="${esc(n)}">Undo add</button>` : '');
+      return `<tr><td>${esc(n)}${r.added ? ' <span class="muted">(added)</span>' : ''}</td><td class="n" data-label="FTE">${esc(fte)}</td>
+        <td data-label="First day">${r.start ? esc(shortD(r.start)) : '<span class="muted">—</span>'}</td>
+        <td data-label="Last day">${r.end ? esc(shortD(r.end)) : '<span class="muted">—</span>'}</td><td data-label="">${act}</td></tr>`;
+    }).join('') + '</tbody>';
+  }
+  $('#rAdd').addEventListener('click', () => {
+    const name = $('#rName').value.trim().replace(/\s+/g, ' '), start = $('#rStart').value, fte = +$('#rFte').value;
+    if (!name) { $('#rosterStatus').textContent = 'Enter a name.'; return; }
+    if (names.some(n => n.toLowerCase() === name.toLowerCase())) { $('#rosterStatus').textContent = `${name} is already in the group.`; return; }
+    if (!start) { $('#rosterStatus').textContent = 'Pick their first day.'; return; }
+    state.roster[name] = { fte, start, does_rcac: $('#rRcac').checked, added: true };
+    state.subs[name] = { name, submitted_at: '', away: [], prefer_off: [], leave: [], want_weeks: [], open_to_locums: false,
+      weekend_cover_ok: false, evening_pattern: 'spread', overlap_services: [] };
+    names.push(name); save(); fillWho(); $('#who').value = state.who;
+    $('#rName').value = ''; $('#rStart').value = '';
+    $('#rosterStatus').textContent = `${name} added (FTE ${fte}, from ${shortD(start)}). They can now pick their name on My requests. The plan includes them at the next re-plan.`;
+    renderAdmin();
+  });
+  $('#rosterTable').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.setEnd) {
+      const n = b.dataset.setEnd, v = $(`[data-end-for="${CSS.escape(n)}"]`).value;
+      if (!v) { $('#rosterStatus').textContent = `Pick ${n}'s last day first.`; return; }
+      const r = state.roster[n] = state.roster[n] || {};
+      if (r.start && v < r.start) { $('#rosterStatus').textContent = 'The last day is before their first day.'; return; }
+      r.end = v; $('#rosterStatus').textContent = `${n}'s last day set to ${shortD(v)}. Takes effect at the next re-plan.`;
+    } else if (b.dataset.undoEnd) {
+      const n = b.dataset.undoEnd; delete state.roster[n].end;
+      if (!Object.keys(state.roster[n]).length) delete state.roster[n];
+      $('#rosterStatus').textContent = `${n} stays in the group (last day cleared).`;
+    } else if (b.dataset.undoAdd) {
+      const n = b.dataset.undoAdd;
+      delete state.roster[n]; delete state.subs[n]; names.splice(names.indexOf(n), 1);
+      if (state.who === n) { state.who = names[0]; loadDraft(); renderAll(); }
+      $('#rosterStatus').textContent = `${n} removed (added by mistake; no shifts).`;
+    } else return;
+    save(); fillWho(); $('#who').value = state.who; renderAdmin();
+  });
+  function renderAdmin() {
+    renderRoster();
+    const subs = Object.values(state.subs);
+    $('#subsTable').innerHTML = `<thead><tr><th>Physician</th><th>Submitted</th><th>Away days</th><th>Prefer off</th><th>Long leave</th><th>Weeks wanted</th><th>Locums</th><th>Weekend cover</th><th>Evening/nights</th><th>Service weeks</th></tr></thead><tbody>` +
+      subs.map(s => `<tr><td>${esc(s.name)}</td><td data-label="Submitted">${s.submitted_at ? esc(fmtTime(s.submitted_at)) + ((s.history || []).length > 1 ? ` <span class="muted">(${s.history.length} submissions)</span>` : '') : '<span class="muted">from spreadsheet</span>'}</td>
+        <td class="n" data-label="Away days">${(s.away||[]).length}</td><td class="n" data-label="Prefer off">${(s.prefer_off||[]).length}</td><td class="n" data-label="Long leave">${(s.leave||[]).length}</td><td class="n" data-label="Weeks wanted">${(s.want_weeks||[]).length}</td>
+        <td data-label="Locums">${s.open_to_locums ? 'Yes' : 'No'}</td><td data-label="Weekend trade">${s.weekend_cover_ok ? 'Yes' : 'No'}</td>
+        <td data-label="Evening/nights">${esc(PLABEL[s.evening_pattern] || '')}${(s.overlap_services||[]).length ? ' (' + s.overlap_services.join(' + ') + ')' : ''}</td>
+        <td data-label="Service weeks">${ROTATION_EXCLUDE.includes(s.name) ? '—' : esc(WLABEL[s.week_pattern || 'spread'])}</td></tr>`).join('') + '</tbody>';
+    const log = subs.flatMap(s => (s.history || []).map(h => ({ name: s.name, h }))).sort((a, b) => a.h.at < b.h.at ? 1 : a.h.at > b.h.at ? -1 : 0);
+    $('#logTable').innerHTML = log.length ? `<thead><tr><th>Submitted</th><th>Physician</th><th>Changes</th></tr></thead><tbody>` +
+      log.map(({ name, h }) => `<tr><td>${esc(fmtTime(h.at))}</td><td data-label="Physician">${esc(name)}</td><td data-label="Changes">${esc(changeTxt(h))}</td></tr>`).join('') + '</tbody>'
+      : '<tbody><tr><td class="muted">No submissions on this form yet (requests so far came from the old spreadsheet).</td></tr></tbody>';
+    const cap = +state.cap || 3;
+    const rot = names.filter(n => !CONTEST_EXCLUDE.includes(n));
+    let rows = '';
+    contested().forEach(c => {
+      const verdict = c.order.map(n => `<span class="pill ${c.granted.includes(n) ? 'ok' : 'wait'}">${esc(n)}: ${c.granted.includes(n) ? 'granted' : 'waitlist'} (${c.winsBefore[n]} won${c.why[n] ? '; ' + c.why[n] : ''})</span>`).join(' ');
+      rows += `<tr><td>Week of ${c.mon}</td><td class="n" data-label="Away">${[...c.order, ...c.icuAway].reduce((s, n) => s + contestWeight(n), 0)}</td><td data-label="ICU / leave">${c.icuAway.map(esc).join(', ') || '—'}</td><td data-label="Decision"><span>${verdict}</span></td></tr>`;
+    });
+    $('#contestTable').innerHTML = rows ? `<thead><tr><th>Week of</th><th>Away</th><th>ICU / leave</th><th>Decision (fewest recent wins, then first to ask for that week)</th></tr></thead><tbody>${rows}</tbody>`
+      : '<tbody><tr><td class="muted">No week has more than ' + cap + ' people away. Nothing to decide.</td></tr></tbody>';
+    $('#winsBox').innerHTML = rot.map(n => `<label class="row" style="gap:6px" for="win-${esc(n).replace(/\W/g,'')}">${esc(n)} <input type="number" min="0" max="20" class="in" style="width:4.5em" id="win-${esc(n).replace(/\W/g,'')}" data-win="${esc(n)}" value="${state.wins[n] || 0}"></label>`).join('');
+    // ICU
+    $('#icuBox').innerHTML = `<div class="row" style="gap:10px;font-size:.9rem"><span class="muted">Who splits time with ICU:</span>${names.filter(n => !ROTATION_EXCLUDE.includes(n)).map(n => `<label class="chk"><input type="checkbox" data-icu-who="${esc(n)}" ${ICU.includes(n) ? 'checked' : ''}><span>${esc(n)}</span></label>`).join('')}</div>` + ICU.filter(n => state.subs[n]).map(n => {
+      const set = new Set(state.icu[n] || []);
+      return `<div><strong>${esc(n)}</strong> <span class="muted">${set.size} week${set.size===1?'':'s'}</span><div class="icugrid" style="margin-top:6px">` +
+        scheduledMondays.map((mon, i) => `<button class="wk" data-icu="${esc(n)}" data-mon="${mon}" aria-pressed="${set.has(mon)}" title="Week of ${mon}">${mon.slice(5)}</button>`).join('') + '</div></div>';
+    }).join('');
+  }
+  $('#winsBox').addEventListener('change', e => { const n = e.target.dataset.win; if (!n) return; state.wins[n] = +e.target.value || 0; save(); renderAdmin(); });
+  $('#cap').value = state.cap;
+  $('#cap').addEventListener('input', e => { state.cap = +e.target.value || 3; save(); renderAdmin(); });
+  if (state.maxWins == null) state.maxWins = 2;
+  $('#maxWins').value = state.maxWins;
+  $('#maxWins').addEventListener('input', e => { state.maxWins = +e.target.value || 2; save(); renderAdmin(); });
+  $('#icuBox').addEventListener('change', e => {
+    const n = e.target.dataset && e.target.dataset.icuWho; if (!n) return;
+    if (e.target.checked) { if (!ICU.includes(n)) ICU.push(n); } else ICU.splice(ICU.indexOf(n), 1);
+    save(); renderAdmin();
+  });
+  $('#icuBox').addEventListener('click', e => {
+    const b = e.target.closest('button[data-icu]'); if (!b) return;
+    const n = b.dataset.icu, mon = b.dataset.mon, set = new Set(state.icu[n] || []);
+    set.has(mon) ? set.delete(mon) : set.add(mon);
+    state.icu[n] = [...set].sort(); save(); renderAdmin();
+  });
+
+  // ---------- change who is on call ----------
+  const SCHED = {};
+  const SCHED_WK = {};   // date -> 1 if it belongs to a weekend block (incl. a joined stat Monday or Good Friday)
+  JSON.parse(document.getElementById('sched').textContent).forEach(r => { SCHED[r[0]] = { 'AMS day': r[1], 'AMS evening/night': r[2], 'CMCU day': r[3], 'RCAC': r[4] || '' }; SCHED_WK[r[0]] = r[5]; });
+  // the service week as scheduled: Monday-Sunday, minus a Monday joined to the weekend before, plus a stat Monday
+  // joined to this week's weekend
+  function serviceDays(mon) {
+    const ds = [0,1,2,3,4,5,6].map(i => iso(add(new Date(mon + 'T00:00:00Z'), i)));
+    if (SCHED_WK[ds[0]]) ds.shift();
+    const nextMon = iso(add(new Date(mon + 'T00:00:00Z'), 7));
+    if (SCHED_WK[nextMon]) ds.push(nextMon);
+    return ds.filter(k => SCHED[k]);
+  }
+  const firstWeekday = mon => serviceDays(mon).find(k => !SCHED_WK[k]) || mon;
+  const SLOTKEY = { D: 'AMS day', E: 'AMS evening/night', C: 'CMCU day', R: 'RCAC' };
+  function current(date, shift) {
+    let who = SCHED[date] ? SCHED[date][shift] : '';
+    state.overrides.forEach(o => { if (o.date === date && o.shift === shift) who = o.name === 'Locum' && o.locum_name ? `Locum (${o.locum_name})` : o.name; });
+    return who;
+  }
+  const dates = Object.keys(SCHED).sort();
+  const pubDates = WIN ? dates.filter(k => k <= LOCKED_THROUGH) : dates;
+  $('#chDate').min = (pubDates[0] || dates[0]); $('#chDate').max = (pubDates[pubDates.length - 1] || dates[dates.length - 1]);
+  $('#chDate').value = $('#chDate').max;
+  $('#chWho').innerHTML = ['Locum', ...names].map(n => `<option>${esc(n)}</option>`).join('');
+  $('#lwWeek').innerHTML = scheduledMondays.map(m => `<option value="${m}">Week of ${m}</option>`).join('');
+  function renderChange() {
+    const d = $('#chDate').value, s = $('#chShift').value;
+    const who = current(d, s);
+    $('#chCur').innerHTML = !SCHED[d] ? 'No schedule on that date (holiday weeks are shared separately).' : who ? `Currently: <b>${esc(who)}</b>` : 'No such shift that day.';
+    $('#chLocWrap').hidden = $('#chWho').value !== 'Locum';
+    const mon = $('#lwWeek').value, slot = $('#lwSvc').value;
+    const doc = serviceDays(mon).length ? current(firstWeekday(mon), SLOTKEY[slot]) : '';
+    const shifts = lwShifts(mon, slot, doc);
+    $('#lwCur').innerHTML = doc ? `Week physician: <b>${esc(doc)}</b> · ${shifts.length} shift${shifts.length===1?'':'s'} would move to the locum${(state.subs[doc] && state.subs[doc].open_to_locums) ? ' · open to locums, so the week still counts as theirs' : ''}` : 'No schedule that week.';
+    const rows = state.overrides.map((o, i) => {
+      const nm = o.name === 'Locum' && o.locum_name ? `Locum (${o.locum_name})` : o.name;
+      const credited = o.name === 'Locum' && state.subs[o.was] && state.subs[o.was].open_to_locums;
+      return `<tr><td>${o.date} · ${esc(o.shift)}</td><td data-label="Was">${esc(o.was || '')}</td><td data-label="Now">${esc(nm)}</td><td data-label="Reason">${esc(o.reason || '—')}</td><td data-label="Credit">${credited ? 'Counts as theirs' : '—'}</td><td data-label=""><button class="linkbtn" data-rm="${i}">Remove</button></td></tr>`;
+    }).join('');
+    $('#chTable').innerHTML = rows ? `<thead><tr><th>Date · shift</th><th>Was</th><th>Now</th><th>Reason</th><th>Credit</th><th></th></tr></thead><tbody>${rows}</tbody>` : '<tbody><tr><td class="muted">No changes yet.</td></tr></tbody>';
+  }
+  function lwShifts(mon, slot, doc) {
+    if (!doc) return [];
+    const out = [];
+    // that service's day shifts all week, plus the evening/nights the week physician carries on the weekend
+    serviceDays(mon).forEach(k => { [slot === 'D' ? 'AMS day' : 'CMCU day', 'AMS evening/night'].forEach(s => {
+      if (current(k, s) === doc && (s !== 'AMS evening/night' || SCHED_WK[k])) out.push([k, s]); }); });
+    return out;
+  }
+  ['#chDate', '#chShift', '#chWho', '#lwWeek', '#lwSvc'].forEach(s => $(s).addEventListener('change', renderChange));
+  $('#chAdd').addEventListener('click', () => {
+    const d = $('#chDate').value, s = $('#chShift').value, who = $('#chWho').value, was = current(d, s);
+    if (WIN && d > LOCKED_THROUGH) { $('#chStatus').textContent = `${d} isn't published yet: enter it as a request instead (away, prefer off or a booked locum week); the next plan will handle it.`; return; }
+    if (!SCHED[d] || !was) { $('#chStatus').textContent = 'There is no such shift on that date.'; return; }
+    if (who === was) { $('#chStatus').textContent = `${who} already has that shift.`; return; }
+    state.overrides.push({ date: d, shift: s, name: who, locum_name: who === 'Locum' ? $('#chLocName').value.trim() : '', reason: $('#chReason').value.trim(), was });
+    save(); renderChange();
+    // heads-up on rest rules (the scheduler's rule check is the final word)
+    const warn = [];
+    if (who !== 'Locum') {
+      const next = iso(add(new Date(d + 'T00:00:00Z'), 1)), prev = iso(add(new Date(d + 'T00:00:00Z'), -1));
+      const busy = (k, shifts) => shifts.some(x => SCHED[k] && current(k, x) === who);
+      if (s === 'AMS evening/night' && busy(next, ['AMS day', 'CMCU day', 'RCAC'])) warn.push(`${who} is working the next morning`);
+      if (s !== 'AMS evening/night' && busy(prev, ['AMS evening/night'])) warn.push(`${who} worked the evening/night before`);
+      if (busy(d, ['AMS day', 'CMCU day', 'AMS evening/night', 'RCAC'].filter(x => x !== s))) warn.push(`${who} already has another shift that day`);
+      if ((state.subs[who] && (state.subs[who].away || []).includes(d))) warn.push(`${who} asked to be away that day`);
+    }
+    $('#chStatus').textContent = `Added: ${s} on ${d}, ${was} → ${who}.` + (warn.length ? ' Check: ' + warn.join('; ') + '.' : '');
+  });
+  $('#lwAdd').addEventListener('click', () => {
+    const mon = $('#lwWeek').value, slot = $('#lwSvc').value, doc = current(firstWeekday(mon), SLOTKEY[slot]);
+    if (WIN && mon > LOCKED_THROUGH) { $('#chStatus').textContent = 'That week isn\'t published yet: book the locum week as a request (Locum weeks in requests.json) and the next plan builds around it.'; return; }
+    const list = lwShifts(mon, slot, doc);
+    if (!list.length) { $('#chStatus').textContent = 'Nothing to move that week.'; return; }
+    const ln = $('#lwName').value.trim();
+    list.forEach(([k, s]) => state.overrides.push({ date: k, shift: s, name: 'Locum', locum_name: ln, reason: `Locum week (${slot === 'D' ? 'AMS' : 'CMCU'})`, was: doc }));
+    save(); renderChange(); $('#chStatus').textContent = `Locum booked for ${doc}'s ${slot === 'D' ? 'AMS' : 'CMCU'} week of ${mon}: ${list.length} shifts.`;
+  });
+  $('#chTable').addEventListener('click', e => {
+    const b = e.target.closest('[data-rm]'); if (!b) return;
+    state.overrides.splice(+b.dataset.rm, 1); save(); renderChange(); $('#chStatus').textContent = 'Change removed.';
+  });
+
+
+  // ---------- schedule view ----------
+  const DAYS = JSON.parse(document.getElementById('sched').textContent);   // [date, D, E, C, R, weekend, stat]
+  const DAYMAP = {}; DAYS.forEach(r => { DAYMAP[r[0]] = r; });
+  const PPL = JSON.parse(document.getElementById('webppl').textContent);
+  // weekend/stat shifts traded to the shared-FTE pair or covered by a credited locum week count as done
+  PPL.forEach(p => { if (p.credited && p.total != null) { p.total_worked = p.total; p.total += p.credited; } });
+  PPL.forEach(p => { ['weekend', 'stat'].forEach(k => { const cr = p[k + '_credit'] || 0; p[k + '_worked'] = p[k]; if (cr && p[k] != null) p[k] += cr; }); });
+  const SCH_MONTHS = [...new Set(DAYS.map(r => r[0].slice(0, 7)))].sort().map(s => [+s.slice(0, 4), +s.slice(5, 7) - 1]);
+  let schMonth = Math.max(0, SCH_MONTHS.findIndex(([y, m]) => iso(D(y, m, 1)) >= iso(OPEN_FROM).slice(0, 8) + '01'));
+  if (!WIN) schMonth = 0;
+  if (NP) { const nowYm = new Date().toISOString().slice(0, 7); const i = SCH_MONTHS.map(([y, m]) => `${y}-${String(m + 1).padStart(2, '0')}`).lastIndexOf(nowYm);
+    schMonth = i >= 0 ? i : SCH_MONTHS.length - 1; }
+  $('#schWho').innerHTML = '<option value="">Everyone</option>' + PPL.map(p => `<option>${esc(p.name)}</option>`).join('');
+  $('#schWho').value = names.includes(state.who) ? state.who : '';
+  $('#schWho').addEventListener('change', renderSched);
+  $('#schPrev').addEventListener('click', () => { schMonth = (schMonth + SCH_MONTHS.length - 1) % SCH_MONTHS.length; renderSched(); });
+  $('#schNext').addEventListener('click', () => { schMonth = (schMonth + 1) % SCH_MONTHS.length; renderSched(); });
+  const SL = [['AMS D', 1, 'AMS day'], ['AMS E/N', 2, 'AMS evening/night'], ['CMCU', 3, 'CMCU day'], ['RCAC', 4, 'RCAC']];
+  function renderSched() {
+    const who = $('#schWho').value, [yy, m] = SCH_MONTHS[schMonth];
+    const pubd = WIN && iso(D(yy, m + 1, 0)) <= LOCKED_THROUGH;
+    $('#schTitle').textContent = MONTHS[m] + ' ' + yy + (WIN && !NP ? (pubd ? ' · published' : ' · provisional') : '');
+    const first = D(yy, m, 1), n = new Date(Date.UTC(yy, m + 1, 0)).getUTCDate();
+    let html = DOW.map(d => `<span class="hd">${d}</span>`).join('') + '<span class="sday pad"></span>'.repeat(dow(first));
+    const mine = [];
+    for (let dd = 1; dd <= n; dd++) {
+      const k = iso(D(yy, m, dd)), r = DAYMAP[k], wd = dow(D(yy, m, dd));
+      const statName = STATS.get(k) || '';
+      if (!r) { html += `<div class="sday we"><div class="dn">${dd} <span class="dw">${DOW[wd]}</span><small>${esc(statName)}</small></div><span class="muted" style="font-size:.78rem">Shared separately</span></div>`; continue; }
+      let involved = false;
+      const lines = SL.map(([lab, i, long]) => {
+        if (!r[i]) return '';
+        const me = who && r[i] === who; if (me) { involved = true; mine.push(`${DOW[wd]} ${dd}: ${long}`); }
+        return `<div class="sl"><b>${lab}</b><span class="${who ? (me ? 'me' : 'dim') : ''}" title="${esc(long)}: ${esc(r[i])}">${esc(r[i])}</span></div>`;
+      }).join('');
+      html += `<div class="sday${r[5] ? ' we' : ''}${involved ? ' focus' : ''}"><div class="dn">${dd} <span class="dw">${DOW[wd]}</span><small>${esc(r[6] || '')}</small></div>${lines}</div>`;
+    }
+    $('#schCal').innerHTML = html;
+    const box = $('#schMine');
+    box.hidden = !who;
+    if (who) box.innerHTML = `<strong>${esc(who)} in ${MONTHS[m]} ${yy}: ${mine.length} shift${mine.length === 1 ? '' : 's'}</strong>` + (mine.length ? `<ul>${mine.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '');
+    $('#icsBtn').textContent = who ? `Download ${who}'s calendar` : 'Download calendar files (everyone)';
+  }
+
+  // ---------- calendar files (.ics in a zip) ----------
+  const TIMES = { 1: ['0800', '1700', 'AMS day'], 2: ['1700', '0800', 'AMS evening/night'], 3: ['0800', '1700', 'CMCU day'], 4: ['0800', '1200', 'RCAC'] };
+  function ics(person, calName) {
+    const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Call Requests//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:' + calName.replace(/[,;]/g, ' ')];
+    DAYS.forEach(r => {
+      [1, 2, 3, 4].forEach(i => {
+        if (!r[i] || (person && r[i] !== person)) return;
+        const [s, e, label] = TIMES[i];
+        const d0 = r[0].replace(/-/g, ''), d1 = e < s ? iso(add(new Date(r[0] + 'T00:00:00Z'), 1)).replace(/-/g, '') : d0;
+        L.push('BEGIN:VEVENT', `UID:${r[0]}-${i}@call-requests`, 'DTSTAMP:' + stamp, `DTSTART:${d0}T${s}00`, `DTEND:${d1}T${e}00`,
+          `SUMMARY:${label} – ${r[i]}`.replace(/[,;]/g, ' '), ...(r[6] ? ['DESCRIPTION:' + r[6]] : []), 'END:VEVENT');
+      });
+    });
+    L.push('END:VCALENDAR');
+    return L.join('\r\n') + '\r\n';
+  }
+  const slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  $('#icsBtn').addEventListener('click', async () => {
+    const who = $('#schWho').value, st = $('#icsStatus'), box = $('#icsBox');
+    const fallback = msg => { box.value = ics(who, who ? `Call ${PERIOD} – ${who}` : `Call ${PERIOD}`); box.hidden = false; box.focus(); box.select(); st.textContent = msg; };
+    if (!dl || !window.JSZip) { fallback(`Downloads aren't available here. The calendar for ${who || 'everyone'} is selected below: copy it into a text file ending in .ics, then import that.`); return; }
+    try {
+      const zip = new JSZip();
+      if (who) zip.file(`${slug(who)}-${PERIOD}.ics`, ics(who, `Call ${PERIOD} – ${who}`));
+      else { zip.file(`everyone-${PERIOD}.ics`, ics('', `Call ${PERIOD}`)); PPL.forEach(p => zip.file(`${slug(p.name)}-${PERIOD}.ics`, ics(p.name, `Call ${PERIOD} – ${p.name}`))); }
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const res = await dl.save({ filename: `call-calendar-${who ? slug(who) : 'everyone'}-${PERIOD}.zip`, data: blob });
+      st.textContent = res.status === 'saved' ? 'Saved. Unzip it, then import the .ics file into your calendar.' : '';
+      box.hidden = true;
+    } catch (err) { st.textContent = err && err.code === 'declined' ? 'Download cancelled.' : 'The download didn\'t go through. Try again in a moment.'; }
+  });
+
+  // ---------- fairness ----------
+  const METRICS = [
+    { key: 'total', label: 'Call shifts', unit: 'shifts' },
+    { key: 'weekend', label: 'Weekend shifts', unit: 'shifts' },
+    { key: 'stat', label: 'Stat holiday shifts', unit: 'shifts' },
+    { key: 'weeks', label: 'Service weeks', unit: 'weeks' },
+    { key: 'rcac', label: 'RCAC mornings', unit: 'mornings' },
+  ];
+  let fairKey = 'total';
+  $('#fairMetric').innerHTML = METRICS.map(m => `<button class="mode" data-k="${m.key}" aria-pressed="${m.key === fairKey}">${m.label}</button>`).join('');
+  $('#fairMetric').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (!b) return; fairKey = b.dataset.k; document.querySelectorAll('#fairMetric .mode').forEach(x => x.setAttribute('aria-pressed', x === b)); renderChart(); });
+  const fmt = v => (v > 0.05 ? '+' : v < -0.05 ? '−' : '±') + Math.abs(v).toFixed(1);
+  const fmtP = v => (v > 0.05 ? '+' : v < -0.05 ? '−' : '±') + Math.abs(v).toFixed(1) + '%';
+  let fairUnit = 'shifts';
+  const rowsFor = key => NP
+    ? PPL.filter(p => p['now_' + key] != null && !(key === 'weekend' && p.schedule === 'pair'))
+        .map(p => ({ name: p.name, start: p['now_' + key], startP: null, bal: p['proj_' + key] ?? null, balP: null, dev: p['now_' + key], pct: 0 }))
+    : PPL.filter(p => p[key] != null && p[key + '_share'] != null && p[key + '_share'] > 0)
+    .map(p => { const share = p[key + '_share'], dev = p[key] - share, bal = p['bal_' + key];
+      const start = p['now_' + key] == null ? null : p['now_' + key];
+      return { name: p.name, done: p[key], share, dev, pct: 100 * dev / share, bal, balP: bal == null ? null : 100 * bal / share,
+               start, startP: start == null ? null : 100 * start / share }; });
+  const sd = xs => { if (!xs.length) return 0; const mu = xs.reduce((a, b) => a + b, 0) / xs.length; return Math.sqrt(xs.reduce((a, b) => a + (b - mu) ** 2, 0) / xs.length); };
+  function renderFair() {
+    if (NP) {
+      $('#fairUnit').closest('.row').hidden = true;      // balances are in shifts; no share to take a % of
+      $('#fairPctNote').hidden = true; $('#fairAllNote').hidden = true;
+      $('#fairIntro').textContent = `Each person's running balance: what they have worked in the published months (and their call shifts from November 2026) minus their fair share of it. A fair share is the total for that kind of shift × their FTE ÷ everyone's FTE; time away is made up on other dates, so it doesn't lower anyone's share. Each month's plan gives more to people below even and less to people above, so balances shrink over time. The shared-FTE pair's weekends follow their agreed structure.` +
+        (PROJ ? ` Projection (orange): where each balance would be by ${projLabel()} if this month's draft plan were worked as is. It is only an estimate: the plan is redone every month as requests, leave and people change, so the projection will change too, and no dates are shown until a month is published.` : '');
+      $('#fairTiles').innerHTML = METRICS.map(m => {
+        const rs = rowsFor(m.key); if (!rs.length) return '';
+        const mx = Math.max(...rs.map(r => Math.abs(r.start))), s1 = sd(rs.map(r => r.start));
+        const pr = rs.filter(r => r.bal != null), mxe = pr.length ? Math.max(...pr.map(r => Math.abs(r.bal))) : null;
+        const ok = mxe != null && mxe <= (m.key === 'total' || m.key === 'weekend' ? 2 : 1.5);
+        return `<div class="tile"><span class="k">${m.label}</span><span class="v">±${mx.toFixed(1)}</span>
+          <span class="s">furthest anyone is from even now · SD ${s1.toFixed(2)} ${m.unit}</span>` +
+          (mxe != null ? `<span class="s"><span class="${ok ? 'ok' : 'warn'}">${ok ? '✓' : '!'} ±${mxe.toFixed(1)}</span> projected by ${esc(projLabel())} (estimate)</span>` : '') + `</div>`;
+      }).join('');
+      renderChart(); renderTable(); return;
+    }
+    $('#fairTiles').innerHTML = METRICS.map(m => {
+      // judged on the running balance at the end of the plan (published months + plan) where there is one: some
+      // people are above or below this period's share on purpose, to even out earlier months
+      const all = rowsFor(m.key), hasBal = all.some(r => r.bal != null);
+      const rs = hasBal ? all.filter(r => r.bal != null).map(r => ({ ...r, dev: r.bal, pct: r.balP })) : all;
+      const mx = Math.max(...rs.map(r => Math.abs(r.dev))), mxP = Math.max(...rs.map(r => Math.abs(r.pct)));
+      const s1 = sd(rs.map(r => r.dev)), s1P = sd(rs.map(r => r.pct));
+      const ok = mx <= (m.key === 'total' || m.key === 'weekend' ? 2 : 1.5);
+      const big = fairUnit === 'pct' ? '±' + mxP.toFixed(1) + '%' : '±' + mx.toFixed(1);
+      return `<div class="tile"><span class="k">${m.label}</span><span class="v">${big}</span>
+        <span class="s"><span class="${ok ? 'ok' : 'warn'}">${ok ? '✓ Even' : '! Check'}</span>${hasBal ? 'furthest anyone’s running balance is from even at the end of the plan' : 'furthest anyone is from their share'}</span>
+        <span class="s">${fairUnit === 'pct' ? `= ±${mx.toFixed(1)} ${m.unit}` : `= ±${mxP.toFixed(1)}% of share`} · SD ${s1.toFixed(2)} ${m.unit} (${s1P.toFixed(1)}%)</span></div>`;
+    }).join('');
+    renderChart(); renderTable();
+  }
+  function renderChart() {
+    const m = METRICS.find(x => x.key === fairKey), rs = rowsFor(fairKey);
+    const me = state.who, P = fairUnit === 'pct';
+    // with published months: the bar is where each person starts (balance carried in), the orange mark where they end
+    const S = !!WIN && rs.some(r => r.start != null);
+    const val = S ? (r => (P ? r.startP : r.start) || 0) : (r => P ? r.pct : r.dev), f = P ? fmtP : fmt;
+    const bv = r => P ? r.balP : r.bal;          // running balance at the end (overlay)
+    const mxv = Math.max(...rs.map(r => Math.abs(val(r))), ...rs.filter(r => bv(r) != null).map(r => Math.abs(bv(r))));
+    // fixed scale per measure, so the same gap always looks the same size (one week small, five weeks large);
+    // grows only if someone is further out
+    const MINLIM = { total: 15, weekend: 6, stat: 4, weeks: 6, rcac: 6 };
+    const lim = P ? Math.max(25, Math.ceil(mxv / 5) * 5) : Math.max(MINLIM[fairKey] || 2, Math.ceil(mxv));
+    const s1 = sd(rs.map(val));
+    $('#fairChartTitle').textContent = `${m.label} compared with fair share`;
+    const endLbl = WIN ? new Date(WIN.horizon + 'T12:00').toLocaleDateString('en-CA', { month: 'long', year: 'numeric' }) : '';
+    const startLbl = WIN ? new Date(WIN.open_from + 'T12:00').toLocaleDateString('en-CA', { month: 'long', year: 'numeric' }) : '';
+    if (NP) {
+      $('#fairKey').innerHTML = `<span><i class="k1"></i>Now: running balance through ${esc(ltLabel())} (${m.unit} done minus fair share)</span>` +
+        (PROJ ? `<span><i class="k2"></i>Projected by ${esc(projLabel())}, from this month's draft plan (an estimate; will change)</span>` : '');
+      $('#fairChartNote').textContent = `Right of the line = has done more than their fair share so far; left = has done less. Each month's plan gives people on the left more ${m.unit} and people on the right fewer${PROJ ? ', so the orange marks sit near the line' : ''}. Hover or tap a row for the numbers. Your row (${me}) is highlighted.`;
+    } else $('#fairKey').innerHTML = S
+      ? `<span><i class="k1"></i>Where they start (${startLbl}): everything done before, vs fair share</span><span><i class="k2"></i>Where they end (${endLbl}) if the plan is worked</span>`
+      : `<span><i class="k1"></i>${WIN ? 'This period (provisional plan) vs fair share' : 'Done vs fair share'}</span>` +
+        `<span><i class="k2"></i>${WIN ? 'Running balance at the end of the plan, including published months' : 'Running balance carried to next year'}</span>`;
+    if (!NP) $('#fairChartNote').textContent = S
+      ? `Right of the line = has done more than their fair share so far; left = has done less. The plan gives people on the left more ${m.unit} and people on the right fewer, so everyone ends near the line (orange). Hover or tap a row for the numbers. Your row (${me}) is highlighted.`
+      : (P ? `Bar = difference from fair share as a percentage of that person's share.` : `Bar = ${m.unit} done minus fair share.`) +
+        ` Right of the line: did more; left: did less. Standard deviation ${P ? s1.toFixed(1) + '%' : s1.toFixed(2) + ' ' + m.unit}. Your row (${me}) is highlighted.`;
+    const pos = v => 50 + (v / lim) * 50;
+    const gridAt = [-lim, -lim / 2, lim / 2, lim].map(v => `<span class="grid" style="left:${pos(v)}%"></span>`).join('');
+    $('#fairChart').setAttribute('aria-label', `${m.label}: difference from fair share for each physician, ${P ? 'percent' : m.unit}`);
+    $('#fairChart').innerHTML = rs.map(r => {
+      const v = val(r), l = v >= 0 ? 50 : pos(v), w = Math.abs(pos(v) - 50);
+      const b = bv(r), bl = b == null ? 0 : (b >= 0 ? 50 : pos(b)), bw = b == null ? 0 : Math.abs(pos(b) - 50);
+      const balTxt = b == null ? '' : `; running balance at the end ${P ? fmtP(b) : fmt(r.bal) + ' ' + m.unit}`;
+      const tipTxt = NP ? `${r.name}: now ${fmt(r.start)} ${m.unit} (done minus fair share, published months)` + (b == null ? '' : `; projected ${fmt(r.bal)} by ${projLabel()} (estimate, will change)`) : S
+        ? `${r.name}: starts ${r.start == null ? 'even' : fmt(r.start) + ' ' + m.unit}; this plan gives ${r.done} against a share of ${r.share.toFixed(1)} (${fmt(r.dev)}); ends ${b == null ? '—' : fmt(r.bal) + ' ' + m.unit}`
+        : `${r.name}: ${r.done} ${m.unit} done, fair share ${r.share.toFixed(1)} (${fmt(r.dev)}, ${fmtP(r.pct)})${balTxt}`;
+      return `<div class="drow${r.name === me ? ' me' : ''}" tabindex="0" data-tip="${esc(tipTxt)}">
+        <span class="nm">${esc(r.name)}</span>
+        <span class="track">${gridAt}<span class="zero"></span>${w > 0.2 ? `<span class="bar ${v >= 0 ? 'pos' : 'neg'}" style="left:${l}%;width:${w}%"></span>` : ''}${b == null ? '' : `${bw > 0.2 ? `<span class="bal" style="left:${bl}%;width:${bw}%"></span>` : ''}<span class="balend" style="left:${pos(b)}%"></span>`}</span>
+        <span class="val">${S && r.start == null ? '—' : f(v)}${b == null ? '' : `<span class="bv" title="Running balance at the end">→ ${f(b)}</span>`}</span></div>`;
+    }).join('') + `<div class="axis"><span></span><span class="ticks3"><span>−${lim}${P ? '%' : ''}</span><span>0</span><span>+${lim}${P ? '%' : ''}</span></span><span></span></div>`;
+  }
+  $('#fairUnit').addEventListener('click', e => { const b = e.target.closest('[data-u]'); if (!b) return; fairUnit = b.dataset.u; document.querySelectorAll('#fairUnit .mode').forEach(x => x.setAttribute('aria-pressed', x === b)); renderFair(); });
+  const tip = $('#fairTip');
+  const showTip = (el, x, y) => { tip.textContent = el.dataset.tip; tip.hidden = false; tip.style.left = Math.min(x + 12, window.innerWidth - 270) + 'px'; tip.style.top = (y + 14) + 'px'; };
+  $('#fairChart').addEventListener('mousemove', e => { const r = e.target.closest('.drow'); if (r) showTip(r, e.clientX, e.clientY); else tip.hidden = true; });
+  $('#fairChart').addEventListener('mouseleave', () => { tip.hidden = true; });
+  $('#fairChart').addEventListener('focusin', e => { const r = e.target.closest('.drow'); if (r) { const b = r.getBoundingClientRect(); showTip(r, b.left + 40, b.bottom - 10); } });
+  $('#fairChart').addEventListener('focusout', () => { tip.hidden = true; });
+  function renderTable() {
+    if (NP) {
+      const b = v => v == null ? '—' : fmt(v);
+      $('#fairTable').innerHTML = `<caption class="muted" style="text-align:left;padding-bottom:6px">Running balance for each measure through ${esc(ltLabel())}: shifts done minus fair share, counted from November 2026 (+ = has done more)${PROJ ? `; after the arrow, the projection for ${esc(projLabel())} from this month's draft plan (an estimate that will change)` : ''}. Weekend shifts traded to the shared-FTE pair and locum cover for someone open to locums count as done. The shared-FTE pair's weekends and weekday evening/nights follow their structure (no balance).</caption><thead><tr><th>Physician</th><th>FTE</th><th>Call shifts</th><th>Weekend</th><th>Stat</th><th>Weekday evening/nights</th><th>Service weeks</th><th>RCAC</th></tr></thead><tbody>` +
+        PPL.filter(p => p.now_total != null).map(p => `<tr${p.name === state.who ? ' style="background:var(--accent-soft)"' : ''}><td>${esc(p.name)}</td><td class="n" data-label="FTE">${+(+p.fte).toFixed(2)}</td>` +
+          ['total', 'weekend', 'stat', 'evenings', 'weeks', 'rcac'].map((k, i) => `<td class="n" data-label="${['Call shifts', 'Weekend', 'Stat', 'Weekday evening/nights', 'Service weeks', 'RCAC'][i]}">${p.schedule === 'pair' && (k === 'weekend' || k === 'evenings' || k === 'weeks') ? '—' : b(p['now_' + k]) + (p['proj_' + k] != null ? ` <span class="muted">→ ${b(p['proj_' + k])}</span>` : '')}</td>`).join('') + '</tr>').join('') + '</tbody>';
+      return;
+    }
+    const c = (p, k) => p[k] == null || p[k + '_share'] == null ? '—' : `${p[k]} / ${p[k + '_share'].toFixed(1)}` + (fairUnit === 'pct' && p[k + '_share'] > 0 ? ` (${fmtP(100 * (p[k] - p[k + '_share']) / p[k + '_share'])})` : '');
+    const b = v => v == null ? '—' : fmt(v);
+    // running balances: + = did more than their share (next year asks for less); mix + = leaned AMS
+    const carried = p => [['Call', p.bal_total], ['Weekend', p.bal_weekend], ['Stat', p.bal_stat], ['Evening/nights', p.bal_evenings],
+        ['Weeks', p.bal_weeks], ['RCAC', p.bal_rcac], ['AMS−CMCU weeks', p.bal_mix]]
+      .filter(([, v]) => v != null).map(([k, v]) => `<span style="white-space:nowrap">${k} ${b(v)}</span>`).join(' · ') || '—';
+    $('#fairTable').innerHTML = `<caption class="muted" style="text-align:left;padding-bottom:6px">Done / fair share for each measure, ${PERIOD}${WIN ? ' (provisional plan). Some people are above or below their share for this period on purpose: they are evening out the published months. The last column is where everyone ends up if the plan is worked as planned' : ''}. For people who ticked the weekend-trade option, weekend shifts the shared-FTE pair took off their hands count as done, made up like for like: evening/nights with weekday evening/nights, and day shifts toward extra service weeks of the same service (5 days = 1 week), neither counted twice. Shifts a locum covered for someone open to locums count as theirs. The shared-FTE pair's weekday evening/nights follow their structure (no share).</caption><thead><tr><th>Physician</th><th>FTE</th><th>Call shifts</th><th>Weekend</th><th>Stat</th><th>Weekday evening/nights</th><th>Service weeks</th><th>RCAC</th><th>${WIN ? 'Balance at end of plan' : 'Carried to next year'}</th></tr></thead><tbody>` +
+      PPL.map(p => `<tr${p.name === state.who ? ' style="background:var(--accent-soft)"' : ''}><td>${esc(p.name)}</td><td class="n" data-label="FTE">${+p.fte.toFixed(2)}${p.fte_contract != null ? `<br><span class="muted" style="font-size:.8rem">leave; was ${p.fte_contract}</span>` : ''}</td><td class="n" data-label="Call shifts">${c(p, 'total')}</td><td class="n" data-label="Weekend">${c(p, 'weekend')}${p.weekend_credit ? `<br><span class="muted" style="font-size:.8rem">incl. ${p.weekend_credit} covered for them</span>` : ''}</td><td class="n" data-label="Stat">${c(p, 'stat')}</td><td class="n" data-label="Weekday evening/nights">${p.evenings_share != null ? c({ e: p.weekday_evenings, e_share: p.evenings_share }, 'e') : (p.schedule === 'pair' ? (p.weekday_evenings ?? '—') : '—')}${p.traded_nights ? `<br><span class="muted" style="font-size:.8rem">plus ${p.traded_nights} for weekend nights traded</span>` : ''}</td><td class="n" data-label="Service weeks">${c(p, 'weeks')}</td><td class="n" data-label="RCAC">${c(p, 'rcac')}</td><td data-label="Carried to next year" style="font-size:.85rem;line-height:1.5">${carried(p)}</td></tr>`).join('') + '</tbody>';
+  }
+
+  // ---------- export ----------
+  // waitlisted requests in contested weeks go to the scheduler as "prefer off" (a goal), not as hard time away
+  const payload = () => {
+    const subs = JSON.parse(JSON.stringify(state.subs));
+    contested().forEach(c => c.waitlist.forEach(n => {
+      const s = subs[n], move = (s.away || []).filter(k => c.days.includes(k));
+      s.away = s.away.filter(k => !c.days.includes(k));
+      s.prefer_off = [...new Set([...(s.prefer_off || []), ...move])].sort();
+      (s.waitlisted = s.waitlisted || []).push(c.mon);
+    }));
+    return JSON.stringify({ year: YEAR, ...(WIN ? { window: WIN } : {}), submissions: Object.values(subs), icu_weeks: state.icu, locum_weeks: SEED.locum_weeks || [], overrides: state.overrides,
+      roster: Object.fromEntries(Object.entries(state.roster).map(([n, r]) =>
+        [n, Object.fromEntries(['fte', 'start', 'end', 'does_rcac'].filter(k => r[k] !== undefined).map(k => [k, r[k]]))])) }, null, 1);
+  };
+  const dl = { save: async ({ filename, data }) => {
+    const blob = data instanceof Blob ? data : new Blob([data], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename;
+    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    return { status: 'saved' }; } };
+  function showCopy(msg) { const box = $('#copyBox'); box.value = payload(); box.hidden = false; box.focus(); box.select(); $('#expStatus').textContent = msg; }
+  $('#exportBtn').addEventListener('click', async () => {
+    if (!dl) { showCopy('Downloads aren\'t available here. The file text is selected below: copy it into a file named requests.json.'); return; }
+    try { await dl.save({ filename: 'requests.json', data: payload() }); $('#expStatus').textContent = 'Saved requests.json. Run the scheduler with --requests requests.json.'; }
+    catch (err) { $('#expStatus').textContent = err && err.code === 'declined' ? 'Download cancelled.' : 'The download didn\'t go through. Use "Copy instead".'; }
+  });
+  $('#copyBtn').addEventListener('click', () => {
+    const text = payload();
+    try { navigator.clipboard.writeText(text).then(() => { $('#copyBox').hidden = true; $('#expStatus').textContent = 'Copied. Paste it into a file named requests.json.'; }, () => showCopy('Copying is blocked here. The text is selected below.')); }
+    catch (e) { showCopy('Copying is blocked here. The text is selected below.'); }
+  });
+  // ---------- admin: files and accounts ----------
+  const readFile = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => { try { ok(JSON.parse(r.result)); } catch (e) { no(new Error('not a JSON file')); } }; r.onerror = () => no(r.error); r.readAsText(f); });
+  $('#pubFile').addEventListener('change', async e => {
+    const f = e.target.files[0]; if (!f) return; e.target.value = '';
+    try {
+      const w = await readFile(f);
+      if (!Array.isArray(w.days) || !Array.isArray(w.people)) throw new Error('this doesn\'t look like web_data.json');
+      await BOOT.api.saveGroup('published', { window: w.window || null, days: w.days, people: w.people, loaded_at: new Date().toISOString() });
+      await BOOT.api.saveGroup('settings', settingsNow());
+      $('#loadStatus').textContent = `Loaded ${w.days.length} days. Reloading…`; setTimeout(() => location.reload(), 800);
+    } catch (err) { $('#loadStatus').innerHTML = '<span class="err">' + esc(err.message || err) + '</span>'; }
+  });
+  $('#reqFile').addEventListener('change', async e => {
+    const f = e.target.files[0]; if (!f) return; e.target.value = '';
+    try {
+      const r = await readFile(f);
+      if (!Array.isArray(r.submissions)) throw new Error('this doesn\'t look like requests.json');
+      const weeksOf = ds => scheduledMondays.filter(mon => weekdayBlock(mon).some(k => (ds || []).includes(k)));
+      const rows = r.submissions.filter(x => x && x.name).map(x => ({ name: x.name, data: x, away_weeks: weeksOf(x.away), leave_weeks: weeksOf(x.leave) }));
+      const n = await BOOT.api.importRequests(rows);
+      const st = settingsNow();
+      if (r.year) st.year = r.year;
+      if (r.icu_weeks && Object.keys(r.icu_weeks).length) st.icu = r.icu_weeks;
+      if (r.locum_weeks) st.locum_weeks = r.locum_weeks;
+      if (r.roster) st.roster = r.roster;
+      await BOOT.api.saveGroup('settings', st);
+      $('#loadStatus').textContent = `Imported ${n} people's requests. Reloading…`; setTimeout(() => location.reload(), 800);
+    } catch (err) { $('#loadStatus').innerHTML = '<span class="err">' + esc(err.message || err) + '</span>'; }
+  });
+  let accounts = [];
+  async function renderAccounts() {
+    try { accounts = await BOOT.api.listMembers(); } catch (e) { $('#acStatus').textContent = 'Could not load accounts: ' + (e.message || e); return; }
+    $('#acName').innerHTML = names.map(n => `<option>${esc(n)}</option>`).join('');
+    $('#acctTable').innerHTML = `<thead><tr><th>Email</th><th>Physician</th><th>Admin</th><th></th></tr></thead><tbody>` + accounts.map(a =>
+      `<tr><td>${esc(a.email)}</td><td data-label="Physician">${esc(a.name)}</td><td data-label="Admin">${a.is_admin ? 'Yes' : 'No'}</td>
+       <td data-label="">${a.email === BOOT.me.email ? '<span class="muted">you</span>' : `<button class="btn quiet" data-ac-admin="${esc(a.email)}">${a.is_admin ? 'Remove admin' : 'Make admin'}</button> <button class="btn quiet" data-ac-del="${esc(a.email)}">Unlink</button>`}</td></tr>`).join('') + '</tbody>';
+  }
+  $('#acAdd').addEventListener('click', async () => {
+    const email = $('#acEmail').value.trim().toLowerCase(), name = $('#acName').value;
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { $('#acStatus').textContent = 'Enter their email address.'; return; }
+    if (accounts.some(a => a.name === name && a.email !== email)) { $('#acStatus').textContent = `${name} already has an account linked (unlink it first).`; return; }
+    try { await BOOT.api.saveMember({ email, name, is_admin: $('#acAdmin').checked }); $('#acEmail').value = ''; $('#acAdmin').checked = false;
+      $('#acStatus').textContent = `Linked ${email} to ${name}. Make sure the same email is set up under Authentication › Users in Supabase.`; renderAccounts(); }
+    catch (e) { $('#acStatus').innerHTML = '<span class="err">' + esc(e.message || e) + '</span>'; }
+  });
+  $('#acctTable').addEventListener('click', async e => {
+    const b = e.target.closest('button'); if (!b) return;
+    try {
+      if (b.dataset.acDel) { await BOOT.api.deleteMember(b.dataset.acDel); $('#acStatus').textContent = `Unlinked ${b.dataset.acDel}: they can no longer see anything.`; }
+      else if (b.dataset.acAdmin) { const a = accounts.find(x => x.email === b.dataset.acAdmin); await BOOT.api.saveMember({ ...a, is_admin: !a.is_admin }); $('#acStatus').textContent = 'Updated.'; }
+      renderAccounts();
+    } catch (err) { $('#acStatus').innerHTML = '<span class="err">' + esc(err.message || err) + '</span>'; }
+  });
+
+  // ---------- tabs ----------
+  const TABS = ['me', 'sched', 'fair', 'admin'];
+  function showTab(name) {
+    TABS.forEach(n => {
+      const on = n === name;
+      $('#tab-' + n).setAttribute('aria-selected', on);
+      $('#pane-' + n).hidden = !on;
+      $('#pane-' + n).style.display = on ? 'grid' : 'none';
+    });
+    if (name === 'admin') { renderAdmin(); renderChange(); renderAccounts(); }
+    if (name === 'sched') renderSched();
+    if (name === 'fair') renderFair();
+  }
+  TABS.forEach(n => $('#tab-' + n).addEventListener('click', () => showTab(n)));
+
+  function renderAll() { renderCalendar(); renderOptions(); renderLast(); }
+  loadDraft(); renderAll();
+  if (!IS_ADMIN) $('#tab-admin').hidden = true;
+  renderBusy();
+};
+</script>
+
+<script>
+(() => {
+  const URL_ = 'https://thqlsyliynbhiumjtivb.supabase.co', KEY_ = 'sb_publishable_tfBJXHspu9iiY3NVxeVJqg_gGGLUzsL';
+  const $ = s => document.querySelector(s);
+  const show = id => ['signin', 'loading', 'app'].forEach(x => { $('#' + x).hidden = x !== id; });
+  // the data layer: Supabase, or a stand-in for local testing (window.__CALL_API__)
+  function supabaseApi() {
+    const sb = window.supabase.createClient(URL_, KEY_, { auth: { persistSession: true, autoRefreshToken: true } });
+    const must = ({ data, error }) => { if (error) throw new Error(error.message); return data; };
+    return {
+      async session() { return must(await sb.auth.getSession()).session; },
+      async signIn(email, password) { must(await sb.auth.signInWithPassword({ email, password })); },
+      async signOut() { await sb.auth.signOut(); },
+      async changePassword(password) { must(await sb.auth.updateUser({ password })); },
+      async load() {
+        const sess = must(await sb.auth.getSession()).session, email = (sess.user.email || '').toLowerCase();
+        const me = must(await sb.from('members').select('email,name,is_admin').eq('email', email)).find(Boolean);
+        if (!me) return { me: null, email };
+        const group = must(await sb.from('group_data').select('key,data'));
+        const requests = must(await sb.from('requests').select('name,data'));
+        const contested = me.is_admin ? [] : must(await sb.rpc('contested_weeks'));
+        const g = k => (group.find(x => x.key === k) || {}).data;
+        return { me, published: g('published'), settings: g('settings'), overrides: g('overrides'), requests, contested };
+      },
+      async contested() { return must(await sb.rpc('contested_weeks')); },
+      async submit(name, data, options, awayWeeks, leaveWeeks) {
+        return must(await sb.rpc('submit_request', { p_name: name, p_data: data, p_options: options, p_away_weeks: awayWeeks, p_leave_weeks: leaveWeeks }));
+      },
+      async saveGroup(key, data) { must(await sb.from('group_data').upsert({ key, data, updated_at: new Date().toISOString() })); },
+      async importRequests(rows) { return must(await sb.rpc('import_requests', { p_rows: rows })); },
+      async listMembers() { return must(await sb.from('members').select('email,name,is_admin').order('name')); },
+      async saveMember(m) { must(await sb.from('members').upsert({ email: m.email, name: m.name, is_admin: !!m.is_admin })); },
+      async deleteMember(email) { must(await sb.from('members').delete().eq('email', email)); },
+    };
+  }
+  const api = window.__CALL_API__ || supabaseApi();
+  const blank = name => ({ name, submitted_at: '', away: [], prefer_off: [], leave: [], want_weeks: [], open_to_locums: false,
+    weekend_cover_ok: false, evening_pattern: 'spread', overlap_services: [], week_pattern: 'spread' });
+
+  // others' weekday dates in contested weeks (members only): added to their otherwise empty entries
+  function mergeContested(subs, rows, myName) {
+    (rows || []).forEach(c => {
+      if (c.kind === 'icu' || c.name === myName) return;
+      const s = subs[c.name] = subs[c.name] || blank(c.name);
+      const det = c.detail || {};
+      s.away = [...new Set([...(s.away || []), ...(det.away || [])])].sort();
+      s.leave = [...new Set([...(s.leave || []), ...(det.leave || [])])].sort();
+      s.requested_at = s.requested_at || {}; s.requested_at.away = { ...(s.requested_at.away || {}), ...(det.stamps || {}) };
+    });
+  }
+  async function start() {
+    show('loading');
+    let d;
+    try { d = await api.load(); }
+    catch (e) { show('signin'); $('#siStatus').innerHTML = '<span class="err">Could not load: ' + (e.message || e) + '</span>'; return; }
+    if (!d.me) {
+      show('signin');
+      $('#siStatus').innerHTML = '<span class="err">Signed in as ' + d.email + ', but this email isn\'t linked to a physician yet. Ask the admin to link it.</span>';
+      await api.signOut(); return;
+    }
+    const pub = d.published || { window: null, days: [], people: [] }, st = d.settings || {};
+    const ppl = pub.people || [];
+    const roster = st.roster || {};
+    const names = [...new Set([...ppl.map(p => p.name), ...Object.keys(roster).filter(n => roster[n].added),
+      ...(d.me.is_admin ? d.requests.map(r => r.name) : []), d.me.name])];
+    const sch = n => (ppl.find(p => p.name === n) || {}).schedule;
+    const sg = st.groups || {};
+    const groups = {
+      pair: ppl.filter(p => p.schedule === 'pair').map(p => p.name),
+      cardiologists: ppl.filter(p => p.schedule === 'rcac_only').map(p => p.name),
+      icu: (sg.icu || ppl.filter(p => p.schedule === 'rotation' && +(p.fte_contract ?? p.fte) === 0.5).map(p => p.name)).slice(),
+    };
+    const subs = {};
+    names.forEach(n => { subs[n] = blank(n); });
+    d.requests.forEach(r => { subs[r.name] = { ...blank(r.name), ...r.data, name: r.name }; });
+    mergeContested(subs, d.contested, d.me.name);
+    const year = st.year || (pub.window ? +pub.window.open_from.slice(0, 4) : new Date().getFullYear());
+    document.getElementById('sched').textContent = JSON.stringify(pub.days || []);
+    document.getElementById('webppl').textContent = JSON.stringify(ppl);
+    document.getElementById('seed').textContent = JSON.stringify({ year, window: pub.window || undefined,
+      submissions: Object.values(subs), icu_weeks: st.icu || {}, locum_weeks: st.locum_weeks || [], roster });
+    $('#ubWho').textContent = 'Signed in: ' + d.me.name + (d.me.is_admin ? ' (admin)' : '');
+    show('app');
+    try { window.startApp({ me: { ...d.me }, names, groups, settings: st, overrides: d.overrides || [], api, mergeContested }); }
+    catch (e) { console.error(e); $('#ubWho').textContent += ' · something went wrong showing the page: ' + e.message; }
+    if (!pub.days || !pub.days.length) $('#pageSub').textContent = d.me.is_admin
+      ? 'No published calendar loaded yet: on the Admin tab, load web_data.json from the scheduler.'
+      : 'The published calendar hasn\'t been loaded yet.';
+  }
+
+  $('#signinForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    $('#siBtn').disabled = true; $('#siStatus').textContent = 'Signing in…';
+    try { await api.signIn($('#siEmail').value.trim(), $('#siPass').value); $('#siPass').value = ''; $('#siStatus').textContent = ''; await start(); }
+    catch (err) { $('#siStatus').innerHTML = '<span class="err">' + (/invalid/i.test(err.message) ? 'Wrong email or password.' : err.message) + '</span>'; }
+    finally { $('#siBtn').disabled = false; }
+  });
+  $('#ubOut').addEventListener('click', async () => { await api.signOut(); location.reload(); });
+  $('#ubPass').addEventListener('click', () => { $('#pwBox').hidden = !$('#pwBox').hidden; });
+  $('#pwSave').addEventListener('click', async () => {
+    const p = $('#pwNew').value;
+    if (p.length < 8) { $('#pwStatus').textContent = 'At least 8 characters.'; return; }
+    try { await api.changePassword(p); $('#pwNew').value = ''; $('#pwStatus').textContent = 'Password changed.'; }
+    catch (e) { $('#pwStatus').textContent = 'Not changed: ' + e.message; }
+  });
+
+  (async () => {
+    let sess = null;
+    try { sess = await api.session(); } catch (e) {}
+    if (sess) start(); else show('signin');
+  })();
+})();
+</script>
+</body>
+</html>
